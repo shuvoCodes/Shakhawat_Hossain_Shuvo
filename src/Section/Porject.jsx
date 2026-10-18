@@ -74,7 +74,7 @@ const Porject = () => {
                             <div className="mm-bar w-4/5" />
                             <div className="mm-block" /> */}
                             <a href='https://github.com/shuvoCodes/CSE-Clab-App/releases/tag/v1.0.1' target="_blank">
-                                <img className='rounded-xl h-48 w-full object-cover' src="/public/ClassRoutineApp.jpg" alt="Class Routine APP Image" />
+                                <img className='rounded-xl h-48 w-full object-cover' src="/ClassRoutineApp.jpg" alt="Class Routine APP Image" />
                             </a>
                         </div>
                     </div>
