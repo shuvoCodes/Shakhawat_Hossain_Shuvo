@@ -1,42 +1,40 @@
 # Portfolio Backend API
 
-এই ডকুমেন্টে backend-এর বর্তমান API endpoint, method, request এবং কাজের বিবরণ দেওয়া হয়েছে।
+This document describes the backend API endpoints, request formats, and responses.
 
 ## Base URL
 
-Local development-এ:
+For local development:
 
 ```text
 http://localhost:8000
 ```
 
-FastAPI interactive docs: `http://localhost:8000/docs`
+FastAPI interactive documentation: <http://localhost:8000/docs>
 
 ## Authentication
 
-Protected endpoint-এ `Authorization: Bearer <access_token>` header পাঠান। Token 24 ঘণ্টা বৈধ থাকে।
-
-Production-এ স্থায়ী, গোপন `AUTH_SECRET` environment variable সেট করুন। এটি না থাকলে (অথবা development placeholder ব্যবহার করলে) server একটি temporary key তৈরি করে; restart-এর পর আগের token আর কাজ করবে না এবং একাধিক worker-এর মধ্যে token share হবে না।
-
-প্রথম admin account তৈরি করতে backend directory থেকে চালান:
-
-```bash
-python create_user.py <username> <password> admin
-```
-
-`admin` বাদ দিলে account-এর role হবে `user`। শুধু `admin` role-এর account-ই protected write endpoint ব্যবহার করতে পারে।
-
-Project create/update/delete এবং image upload করার জন্য admin access token লাগবে। প্রথমে নিচের login endpoint-গুলোর যেকোনো একটি ব্যবহার করে token নিন। Protected endpoint-এ header পাঠান:
+Protected endpoints require this header:
 
 ```http
 Authorization: Bearer <access_token>
 ```
 
-Token 24 ঘণ্টা বৈধ থাকে।
+Tokens expire after 24 hours. Configure a persistent, private `AUTH_SECRET` environment variable in production. If it is missing or set to the development placeholder, the server creates a temporary signing key. Tokens will stop working after a restart, and multiple workers will not share the temporary key.
+
+Create an admin account from the `Backend` directory:
+
+```bash
+python create_user.py <username> <password> admin
+```
+
+If the role is omitted, the account is created as a regular `user`. Only accounts with the `admin` role can use protected write endpoints.
+
+Use either of the following login endpoints to obtain an access token.
 
 ### `POST /auth/login`
 
-JSON body দিয়ে login করে।
+Sign in using a JSON request body.
 
 **Request**
 
@@ -64,11 +62,11 @@ JSON body দিয়ে login করে।
 
 ### `POST /auth/token`
 
-OAuth2 password form দিয়ে login করে। `Content-Type: application/x-www-form-urlencoded` হিসেবে `username` ও `password` পাঠান। Response `/auth/login`-এর মতোই।
+Sign in using an OAuth2 password form. Send `username` and `password` as `application/x-www-form-urlencoded`. The response has the same shape as `/auth/login`.
 
 ### `GET /auth/me`
 
-বর্তমান token-এর user-এর তথ্য দেয়। Bearer token প্রয়োজন।
+Return information about the user associated with the current token. A bearer token is required.
 
 **Response**
 
@@ -82,7 +80,7 @@ OAuth2 password form দিয়ে login করে। `Content-Type: application/
 
 ## Projects
 
-একটি project-এর response shape:
+A project response has this shape:
 
 ```json
 {
@@ -112,11 +110,11 @@ OAuth2 password form দিয়ে login করে। `Content-Type: application/
 }
 ```
 
-`github_url`-ও পুরোনো client-এর compatibility-র জন্য frontend source URL হিসেবে গ্রহণ করা হয় এবং response-এ ফেরত দেওয়া হয়। নতুন client-এ `frontend_source_url` ব্যবহার করুন। `title` সর্বোচ্চ 200, `description` 5000, `category` 100 এবং `status` 50 character হতে পারে; URL field সর্বোচ্চ 2048 character।
+For compatibility with older clients, `github_url` is accepted as an alias for the frontend source URL and is also returned in responses. New clients should use `frontend_source_url`. Maximum lengths are 200 characters for `title`, 5,000 for `description`, 100 for `category`, 50 for `status`, and 2,048 for URL fields.
 
 ### `POST /projects`
 
-নতুন project তৈরি করে। Admin token প্রয়োজন। `title` ও `description` আবশ্যক; বাকি field ঐচ্ছিক।
+Create a project. An admin token is required. `title` and `description` are required; all other fields are optional.
 
 **Request**
 
@@ -150,19 +148,19 @@ OAuth2 password form দিয়ে login করে। `Content-Type: application/
 }
 ```
 
-`features`, `technologies` এবং `images` না পাঠালে খালি list হবে। `category`-এর default `frontend`, `status`-এর default `in_progress`, `featured`-এর default `false`, `priority`-এর default `0`। সফল হলে `201 Created` দিয়ে সম্পূর্ণ project object ফেরত দেয়।
+If omitted, `features`, `technologies`, and `images` default to empty lists. Defaults are `frontend` for `category`, `in_progress` for `status`, `false` for `featured`, and `0` for `priority`. On success, the endpoint returns the complete project with `201 Created`.
 
 ### `GET /projects/all`
 
-সব project সম্পূর্ণ detail-সহ ফেরত দেয়। বেশি `priority`-র project আগে আসে; priority সমান হলে ছোট ID আগে আসে। Project না থাকলে `404` ফেরত দেয়।
+Return all projects with their details. Projects are sorted by descending priority and then ascending ID. Returns `404` when no projects exist.
 
 ### `GET /projects/{project_id}`
 
-ID অনুযায়ী একটি project-এর সম্পূর্ণ detail ফেরত দেয়। না পাওয়া গেলে `404`।
+Return a project's full details by ID. Returns `404` if the project does not exist.
 
 ### `PATCH /projects/{project_id}`
 
-Project-এর নির্বাচিত field update করে। Admin token প্রয়োজন। শুধু পরিবর্তন করতে চাওয়া field-গুলো পাঠান; বাদ দেওয়া field অপরিবর্তিত থাকবে।
+Update selected project fields. An admin token is required. Include only fields to change; omitted fields remain unchanged.
 
 ```json
 {
@@ -179,29 +177,29 @@ Project-এর নির্বাচিত field update করে। Admin token
 }
 ```
 
-- `priority` বাড়ালে project list-এ project উপরে দেখাবে।
-- `features` পাঠালে আগের feature list সম্পূর্ণ replace হবে।
-- `technologies` পাঠালে আগের technology list সম্পূর্ণ replace হবে।
-- `images` পাঠালে আগের image list সম্পূর্ণ replace হবে। নতুন list-এ না থাকা পুরোনো local `/uploads/` image file-গুলো মুছে যাবে। কোনো পুরোনো local image রাখতে চাইলে সেটির `image_url` নতুন list-এ রাখুন। `"images": []` দিলে সব image সরানো হবে।
-- `live_url`, `frontend_source_url` বা `backend_source_url` `null` দিলে ওই URL মুছে যাবে। `github_url`-এর মাধ্যমে frontend source URL-ও update/মুছে দেওয়া যাবে। অন্য field-এ `null` পাঠানো যাবে না।
+- Increasing `priority` moves a project higher in the project list.
+- Sending `features` replaces the existing feature list.
+- Sending `technologies` replaces the existing technology list.
+- Sending `images` replaces the existing image list. Old local `/uploads/` files that are not included in the new list are deleted. Keep a file by including its `image_url` in the replacement list. Sending `"images": []` removes all images.
+- Sending `null` for `live_url`, `frontend_source_url`, or `backend_source_url` clears that URL. `github_url` can also be used to update or clear the frontend source URL. Other fields cannot be `null`.
 
-সফল হলে সম্পূর্ণ updated project object ফেরত দেয়। Project না থাকলে `404`।
+On success, the endpoint returns the complete updated project. Returns `404` if the project does not exist.
 
 ### `DELETE /projects/{project_id}`
 
-Project ও তার feature, technology এবং image record মুছে দেয়। Project-এর local `/uploads/` image file-ও মুছে ফেলা হয়। Admin token প্রয়োজন। সফল হলে `204 No Content`; project না থাকলে `404`।
+Delete the project and its feature, technology, and image records. Local `/uploads/` files belonging only to this project are also deleted. An admin token is required. Returns `204 No Content` on success or `404` if the project does not exist.
 
 ## Images
 
 ### `POST /projects/{project_id}/images`
 
-Project-এ একটি image upload করে। Admin token প্রয়োজন। `multipart/form-data`-তে `file` নামে image পাঠান।
+Upload an image to a project. An admin token is required. Send the image in the `file` field as `multipart/form-data`.
 
-- JPG/JPEG, PNG, WEBP এবং GIF সমর্থিত।
-- Request-এর content type এবং file-এর আসল image format মিলতে হবে।
-- সর্বোচ্চ file size 5 MB।
-- সফল হলে `201 Created` এবং image URL ফেরত দেয়।
-- Project না থাকলে `404`; unsupported/invalid image হলে `400`; size সীমা ছাড়ালে `413`।
+- Supported formats: JPG/JPEG, PNG, WEBP, and GIF.
+- The request content type must match the actual image format.
+- Maximum file size: 5 MB.
+- On success, returns `201 Created` and the image URL.
+- Returns `404` if the project does not exist, `400` for an unsupported or invalid image, and `413` if the size limit is exceeded.
 
 **Response**
 
@@ -224,9 +222,9 @@ curl -X POST "http://localhost:8000/projects/1/images" \
 
 ### `GET /projects/{project_id}/images`
 
-Project-এর image list ফেরত দেয়। Project না থাকলে `404`।
+Return a project's image list. Returns `404` if the project does not exist.
 
-প্রতিটি item-এর shape:
+Each item has this shape:
 
 ```json
 {
@@ -238,23 +236,23 @@ Project-এর image list ফেরত দেয়। Project না থাকল�
 
 ### `PUT /projects/{project_id}/images/{image_id}`
 
-Project-এর একটি image নতুন image দিয়ে replace করে। Admin token প্রয়োজন। `multipart/form-data`-তে `file` নামে নতুন image পাঠান। আগের image file অন্য কোনো image record ব্যবহার না করলে সেটিও মুছে যাবে।
+Replace a project image. An admin token is required. Send the replacement image in the `file` field as `multipart/form-data`. The old file is deleted if no other image record references it.
 
 ```bash
 curl -X PUT "http://localhost:8000/projects/1/images/5" \
-  -H "Authorization: ******" \
+  -H "Authorization: Bearer <access_token>" \
   -F "file=@replacement.jpg"
 ```
 
-সফল হলে image ID অপরিবর্তিত রেখে নতুন image URL ফেরত দেয়। Project বা ওই project-এর image না থাকলে `404`; unsupported/invalid image হলে `400`; size সীমা ছাড়ালে `413`।
+On success, the endpoint returns the new image URL and keeps the existing image ID. Returns `404` if the project or its image does not exist, `400` for an unsupported or invalid image, and `413` if the size limit is exceeded.
 
 ### `DELETE /projects/{project_id}/images/{image_id}`
 
-Project থেকে একটি image record মুছে দেয়। Admin token প্রয়োজন। অন্য কোনো image record একই local file ব্যবহার না করলে file-টিও disk থেকে মুছে যাবে। সফল হলে `204 No Content`; project বা ওই project-এর image না থাকলে `404`।
+Delete an image record from a project. An admin token is required. The file is also deleted from disk if no other image record references it. Returns `204 No Content` on success or `404` if the project or image does not exist.
 
 ### `GET /uploads/{filename}`
 
-Uploaded image file সরাসরি দেখায় বা download করে। এই route FastAPI static file serving দিয়ে সরবরাহ করা হয়।
+Serve or download an uploaded image file. This route is provided by FastAPI static file serving.
 
 ## Common error responses
 
@@ -264,8 +262,8 @@ Uploaded image file সরাসরি দেখায় বা download করে
 }
 ```
 
-- `401 Unauthorized`: token অনুপস্থিত, ভুল বা মেয়াদোত্তীর্ণ।
-- `403 Forbidden`: valid token আছে, কিন্তু admin role নেই।
-- `404 Not Found`: project/resource পাওয়া যায়নি।
-- `422 Unprocessable Entity`: request field validation ব্যর্থ।
-- `413 Payload Too Large`: uploaded image 5 MB-এর বেশি।
+- `401 Unauthorized`: the token is missing, invalid, or expired.
+- `403 Forbidden`: the token is valid, but the user does not have the admin role.
+- `404 Not Found`: the requested project or resource does not exist.
+- `422 Unprocessable Entity`: request field validation failed.
+- `413 Payload Too Large`: the uploaded image exceeds 5 MB.

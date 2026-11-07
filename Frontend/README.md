@@ -1,66 +1,42 @@
-# Shuvo — Full Stack Developer Portfolio (React + Vite + Tailwind CSS)
+# Shuvo — Full-Stack Developer Portfolio
 
-Same portfolio, same content, styled entirely with Tailwind CSS utility
-classes (plus a few repeated patterns like glass cards and buttons pulled
-into reusable classes via `@layer components` in `src/index.css`).
+A React portfolio website built with Vite and Tailwind CSS. The frontend includes the portfolio homepage, project archive, and admin panel, and connects to the FastAPI backend.
 
-## Project structure
+## Routes
 
-```
-shuvo-portfolio-react-tailwind/
-├── index.html          ← fonts + theme-init script (avoids a flash of the wrong theme)
-├── package.json
-├── tailwind.config.js
-├── postcss.config.js
-├── vite.config.js
-├── public/
-│   └── shuvo.jpg         ← hero portrait
-└── src/
-    ├── main.jsx           ← mounts the portfolio, project archive, and admin routes
-    ├── Portfolio.jsx        ← the whole page, plain React (no framework-specific bits)
-    └── index.css            ← Tailwind directives + component classes
-```
+| Route | Description |
+|---|---|
+| `/` | Portfolio homepage |
+| `/projects` | Project archive |
+| `/admin` | Admin sign-in and project management |
 
 ## Run locally
+
+Requirements: Node.js 18 or later and npm.
 
 ```bash
 npm install
 npm run dev
 ```
 
-Then open the printed local URL (usually http://localhost:5173).
+Open the local URL printed by Vite, usually <http://localhost:5173>. During development, Vite proxies `/api` requests and `/uploads` to `http://127.0.0.1:8000`; start the backend separately.
 
-The portfolio is available at `/`, the project archive at `/projects`, and
-the admin panel at `/admin`. Both project views load from `GET /projects/all`;
-project details, technologies, and images load from the corresponding
-`/projects/{id}` endpoints. Include a `features` array in the project-list and
-project-detail API responses to show feature names (strings) or feature
-objects with `title`/`name` and optional `description` in the project detail
-card. During development, Vite proxies `/api` requests
-and `/uploads` to `http://127.0.0.1:8000`. Set `VITE_API_BASE_URL` when the API
-is hosted elsewhere. The archive can be filtered by All, Frontend, or Backend
-using category/type fields or recognized technology names from the API.
+The homepage and project archive load data from `GET /projects/all`. Project details are available from `GET /projects/{project_id}`. The archive can be filtered by project category and recognized technology names.
 
-## Portfolio admin
+## Admin panel
 
-Open `/admin` to sign in and manage portfolio projects. The admin UI uses the
-REST endpoints described in `AdminReadmi.md`. Set `VITE_API_BASE_URL` to the
-backend origin (for example, `https://api.example.com`) before starting or
-building the app; leave it unset when the API is served from the same origin.
-The UI expects `POST /login` to accept `{ "email": "...", "password": "..." }`
-and return an `access_token` or `token`. The token is sent as a Bearer token for
-subsequent API requests.
+Sign in at `/admin` with an admin username and password. The frontend sends credentials to `POST /auth/login` and uses the returned bearer token for protected requests. The admin panel can create, edit, and delete projects and upload, replace, or delete project images. Only accounts with the `admin` role can modify projects; hiding the admin page is not access control.
 
-The Workshops section saves workshop records in the current browser's local
-storage. Those records are not sent to the backend and are not shared across
-browsers or devices. Workshop fields include title, description, date, time,
-venue, registration URL, attendee capacity, and draft/published status.
+See the [Admin panel guide](./AdminReadmi.md) for the interface overview and the [Backend API reference](../Backend/APIsReadme.md) for endpoint details.
 
-Project create/update requests use `title`, `description`, `live_url`,
-`github_url`, and `featured`. The project list and technology/image endpoints
-may return arrays or objects with `items`/`results` arrays. Image uploads use a
-multipart `file` field. Protect the API endpoints on the backend; hiding the
-admin UI alone is not access control.
+## Configure the API URL
+
+For local development, the API base URL defaults to `/api` and Vite proxies requests to the local backend. To use a different backend origin, set `VITE_API_BASE_URL` before starting or building the frontend:
+
+```powershell
+$env:VITE_API_BASE_URL = "https://your-api.example.com"
+npm run dev
+```
 
 ## Build for production
 
@@ -68,27 +44,15 @@ admin UI alone is not access control.
 npm run build
 ```
 
-Output goes to `dist/` — deploy it anywhere that serves static files
-(Vercel, Netlify, GitHub Pages, etc.).
+The production files are written to `dist/`. Deploy the frontend to a static hosting provider and deploy the backend API separately.
 
 ## Dark mode
 
-Tailwind is configured with a custom dark mode selector
-(`darkMode: ['selector', '[data-theme="dark"]']`), so every `dark:` class
-activates when `data-theme="dark"` is set on `<html>`. A small inline
-script in `index.html` sets that attribute before the page paints (reading
-`localStorage`, falling back to the OS preference). The toggle button in
-`Portfolio.jsx` flips it and saves the choice.
+Tailwind uses the custom selector `darkMode: ['selector', '[data-theme="dark"]']`. The inline script in `index.html` sets the theme before the page renders, using the saved preference or the operating system preference. The theme toggle saves the selection in browser storage.
 
-## Things you'll want to personalize
+## Personalize the portfolio
 
-- **Contact info**: swap `shuvo@example.com` in `src/Portfolio.jsx` for
-  your real email.
-- **LinkedIn / GitHub links**: currently placeholders that show a toast
-  reminding you to fill them in — search for `linkedin.com/in/shuvo` and
-  `github.com/shuvo`.
-- **Resume PDF**: the "Download Resume" button currently shows a reminder
-  toast. Add a real `resume.pdf` to `public/` and link the button to
-  `/resume.pdf`.
-- **Project display**: manage projects through the admin panel/API. The
-  homepage shows up to three API projects and `/projects` lists the full catalog.
+- **Contact information:** Update the contact details in the relevant files under `src/`.
+- **LinkedIn and GitHub links:** Update the profile links in the source files.
+- **Resume:** Replace `public/resume.pdf` with your own resume.
+- **Projects:** Manage project content through the admin panel and backend API. The homepage shows up to three projects; `/projects` lists the full catalog.

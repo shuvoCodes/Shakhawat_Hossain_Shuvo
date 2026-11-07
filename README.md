@@ -1,55 +1,59 @@
 # Shuvo Portfolio — Full-Stack Project
 
-এটি Shakhawat Hossain Shuvo-এর personal portfolio website। Frontend-এ portfolio, project archive এবং admin panel আছে; Backend-এ project data, authentication এবং image upload-এর REST API আছে।
+This repository contains Shakhawat Hossain Shuvo's personal portfolio website. The frontend provides the portfolio, project archive, and admin panel. The backend provides a REST API for project data, authentication, and image uploads.
 
-## কী কী আছে
+## Features
 
-- **Portfolio (`/`)** — পরিচিতি, দক্ষতা, project highlights, resume এবং contact section।
-- **Project archive (`/projects`)** — API থেকে project দেখায়; category অনুযায়ী filter করা যায়।
-- **Admin panel (`/admin`)** — admin account দিয়ে sign in করে project তৈরি, edit, delete এবং image manage করা যায়।
-- **REST API** — project, feature, technology ও image data পরিচালনা করে।
-- **Authentication** — admin-only write endpoint-গুলোর জন্য ২৪ ঘণ্টা মেয়াদি bearer token।
-- **Dark/light theme** — browser-এ পছন্দ সংরক্ষিত থাকে।
+- **Portfolio (`/`)** — Introduction, skills, featured projects, resume, and contact section.
+- **Project archive (`/projects`)** — Lists projects from the API and supports category filters.
+- **Admin panel (`/admin`)** — Admin users can create, edit, and delete projects and manage project images.
+- **REST API** — Manages projects, features, technologies, and images.
+- **Authentication** — Bearer tokens protect admin-only write endpoints and expire after 24 hours.
+- **Dark and light themes** — The selected theme is saved in the browser.
 
-## প্রযুক্তি
+## Technology stack
 
-| অংশ | প্রযুক্তি |
+| Area | Technology |
 |---|---|
 | Frontend | React 18, Vite, React Router, Tailwind CSS |
 | Backend | Python, FastAPI, Pydantic, SQLAlchemy |
-| Database | SQLite (`Backend/personal.db`) |
+| Database | SQLite |
 | Image processing | Pillow |
 
-## Folder structure
+## Repository structure
 
 ```text
 .
 ├── Backend/
-│   ├── main.py           # FastAPI app এবং project endpoints
-│   ├── Auth.py           # Login, token ও admin authorization
-│   ├── Upload.py         # Project image upload/update/delete
-│   ├── models.py         # SQLAlchemy database models
-│   ├── database.py       # SQLite connection এবং schema migration
-│   ├── create_user.py    # User/admin account তৈরি
-│   ├── personal.db       # SQLite database
-│   └── Uploads/          # Uploaded image files
-└── Frontend/
-    ├── src/
-    │   ├── Admin.jsx
-    │   ├── Portfolio.jsx
-    │   ├── Projects.jsx
-    │   └── ...
-    ├── public/           # Static images এবং resume
-    └── package.json
+│   ├── main.py           # FastAPI app and project endpoints
+│   ├── Auth.py           # Login, tokens, and admin authorization
+│   ├── Upload.py         # Project image upload, update, and deletion
+│   ├── models.py         # SQLAlchemy models
+│   ├── database.py       # SQLite connection and schema migration
+│   ├── create_user.py    # Create user and admin accounts
+│   ├── APIsReadme.md     # Backend API reference
+│   └── Uploads/          # Uploaded images (created by the app)
+├── Frontend/
+│   ├── src/
+│   │   ├── Admin.jsx
+│   │   ├── Portfolio.jsx
+│   │   ├── Projects.jsx
+│   │   └── ...
+│   ├── public/           # Static images and resume
+│   └── package.json
+└── README.md
 ```
 
-## Local setup (Windows PowerShell)
+## Requirements
 
-Backend ও frontend আলাদা terminal-এ চালান।
+- Python 3.10 or later
+- Node.js 18 or later, including npm
 
-প্রয়োজন: Python 3.10 বা তার পরের সংস্করণ এবং Node.js 18 বা তার পরের সংস্করণ (npm-সহ)।
+## Run locally (Windows PowerShell)
 
-### ১. Backend চালু করুন
+Run the backend and frontend in separate terminals.
+
+### 1. Set up and start the backend
 
 ```powershell
 cd Backend
@@ -59,26 +63,24 @@ python -m pip install --upgrade pip
 python -m pip install fastapi "uvicorn[standard]" sqlalchemy pillow python-multipart
 ```
 
-Production-এর মতো স্থায়ী signing key দিয়ে চালাতে প্রতিটি backend terminal-এ একটি গোপন `AUTH_SECRET` সেট করুন। একই key server restart এবং worker-গুলোর মধ্যে অপরিবর্তিত রাখতে হবে:
+Configure a persistent signing secret before starting the API. Generate one with the first command, then use its output as the value for `AUTH_SECRET`:
 
 ```powershell
 python -c "import secrets; print(secrets.token_urlsafe(48))"
-$env:AUTH_SECRET = "<উপরের command-এর output এখানে বসান>"
+$env:AUTH_SECRET = "<paste-the-generated-secret-here>"
 uvicorn main:app --reload
 ```
 
-Backend চালু হলে:
+The backend is available at:
 
 - API: <http://127.0.0.1:8000>
 - Interactive API documentation: <http://127.0.0.1:8000/docs>
 
-`AUTH_SECRET` সেট না করলে backend অস্থায়ী key ব্যবহার করে; restart-এর পর আগের token আর বৈধ থাকবে না। Production-এ অবশ্যই স্থায়ী secret configure করুন এবং source control-এ রাখবেন না।
+If `AUTH_SECRET` is not configured, the backend creates a temporary signing key. Existing tokens stop working after a restart. Production deployments must configure a persistent secret and must not commit it to source control.
 
-প্রথম command-টি একটি random secret তৈরি করে; সেটির output-কে `$env:AUTH_SECRET`-এর value হিসেবে বসান।
+### 2. Create an admin account
 
-### ২. Admin account তৈরি করুন
-
-Backend folder-এ আরেকটি terminal খুলে virtual environment activate করে চালান:
+Open another terminal, activate the backend virtual environment, and run:
 
 ```powershell
 cd Backend
@@ -86,13 +88,11 @@ cd Backend
 python create_user.py shuvo your-strong-password admin
 ```
 
-`shuvo` ও `your-strong-password`-এর জায়গায় নিজের পছন্দের username ও password দিন। Password-এর মধ্যে space থাকলে quote ব্যবহার করুন। `admin` role না দিলে account তৈরি হবে সাধারণ `user` হিসেবে, যে admin-only project পরিবর্তন করতে পারবে না। Admin panel-এ এই username ও password দিয়েই sign in করুন।
+Replace `shuvo` and `your-strong-password` with your chosen username and password. Quote the password if it contains spaces. If you omit the `admin` role, the account is created as a regular user and cannot use admin-only endpoints. Sign in to `/admin` with the account credentials.
 
-> PowerShell-এ virtual environment activation policy-তে বাধা দিলে activation বাদ দিয়ে `.venv\Scripts\python.exe -m pip ...` এবং `.venv\Scripts\python.exe create_user.py ...` ব্যবহার করা যায়।
+> If PowerShell blocks virtual environment activation, run commands with `.venv\Scripts\python.exe` instead.
 
-### ৩. Frontend চালু করুন
-
-আরেকটি terminal-এ:
+### 3. Install and start the frontend
 
 ```powershell
 cd Frontend
@@ -100,68 +100,59 @@ npm install
 npm run dev
 ```
 
-Vite যে local URL দেখায় সেটি browser-এ খুলুন (সাধারণত <http://localhost:5173>)। Development-এ `/api` request স্বয়ংক্রিয়ভাবে `http://127.0.0.1:8000` backend-এ proxy হয়; আলাদা API URL configure করা না থাকলে অতিরিক্ত কিছু সেট করার দরকার নেই।
+Open the local URL printed by Vite, usually <http://localhost:5173>. During development, Vite proxies `/api` requests to `http://127.0.0.1:8000` and proxies `/uploads` to the same backend.
 
-### ব্যবহার
+### Application routes
 
-| URL | কী দেখায় |
+| URL | Description |
 |---|---|
 | `/` | Portfolio homepage |
-| `/projects` | সব portfolio project |
-| `/admin` | Admin sign-in এবং project management |
-| `http://127.0.0.1:8000/docs` | API পরীক্ষা করার interactive Swagger UI |
+| `/projects` | Project archive |
+| `/admin` | Admin sign-in and project management |
+| `http://127.0.0.1:8000/docs` | Interactive API documentation |
 
-## Project পরিচালনা ও API
+## Project management and API
 
-Admin panel project-এর title, description, category, status, priority, featured flag, live/source URL, technologies এবং feature list manage করে। Project image আলাদাভাবে upload, replace বা delete করা যায়।
+The admin panel manages project titles, descriptions, categories, statuses, priority, featured status, live/source URLs, technologies, and feature lists. Project images can be uploaded, replaced, and deleted separately.
 
-প্রধান endpoint-গুলো:
-
-| Method | Endpoint | কাজ |
+| Method | Endpoint | Purpose |
 |---|---|---|
-| `POST` | `/auth/login` | Username/password দিয়ে login |
-| `GET` | `/auth/me` | Token-এর user তথ্য |
-| `GET` | `/projects/all` | Project list |
-| `GET` | `/projects/{project_id}` | Project detail |
-| `POST` | `/projects` | Project তৈরি (admin) |
-| `PATCH` | `/projects/{project_id}` | Project update (admin) |
-| `DELETE` | `/projects/{project_id}` | Project delete (admin) |
-| `GET` | `/projects/{project_id}/images` | Project-এর image list |
-| `POST` | `/projects/{project_id}/images` | Image upload (admin) |
-| `PUT` | `/projects/{project_id}/images/{image_id}` | Image replace (admin) |
-| `DELETE` | `/projects/{project_id}/images/{image_id}` | Image delete (admin) |
+| `POST` | `/auth/login` | Sign in with a username and password |
+| `GET` | `/auth/me` | Get the current user's information |
+| `GET` | `/projects/all` | List all projects |
+| `GET` | `/projects/{project_id}` | Get project details |
+| `POST` | `/projects` | Create a project (admin) |
+| `PATCH` | `/projects/{project_id}` | Update a project (admin) |
+| `DELETE` | `/projects/{project_id}` | Delete a project (admin) |
+| `GET` | `/projects/{project_id}/images` | List project images |
+| `POST` | `/projects/{project_id}/images` | Upload an image (admin) |
+| `PUT` | `/projects/{project_id}/images/{image_id}` | Replace an image (admin) |
+| `DELETE` | `/projects/{project_id}/images/{image_id}` | Delete an image (admin) |
 
-Protected endpoint-এ login response-এর `access_token` ব্যবহার করে bearer token পাঠাতে হয়। Image upload `multipart/form-data`-র `file` field নেয়; JPG/JPEG, PNG, WEBP ও GIF সমর্থিত, সর্বোচ্চ ৫ MB। বিস্তারিত request/response উদাহরণের জন্য [Backend API guide](Backend/APIsReadme.md) দেখুন।
+Protected endpoints require a bearer token from the login response's `access_token`. Image uploads use a `file` field in `multipart/form-data`. JPG/JPEG, PNG, WEBP, and GIF images are supported up to 5 MB. See the [Backend API reference](Backend/APIsReadme.md) for request and response examples.
 
-## Configuration
+## Configuration and production
 
-Frontend-এর API base URL `VITE_API_BASE_URL` environment variable দিয়ে বদলানো যায়। আলাদা backend origin ব্যবহার করলে frontend command চালানোর আগে সেট করুন:
+Set `VITE_API_BASE_URL` before starting or building the frontend when the API is hosted at a different origin:
 
 ```powershell
 $env:VITE_API_BASE_URL = "https://your-api.example.com"
 npm run dev
 ```
 
-Production build-এর জন্য build করার আগেও একই variable configure করতে হবে:
+For production, configure the same variable before running `npm run build`. The generated static site is placed in `Frontend/dist/`. Deploy the backend separately; deploying only the frontend does not start the API or database. Add the deployed frontend origin to the backend's CORS allowlist in `Backend/main.py`, use HTTPS, and configure a persistent `AUTH_SECRET`.
 
-```powershell
-$env:VITE_API_BASE_URL = "https://your-api.example.com"
-npm run build
-```
+## Data and deployment notes
 
-Frontend build `Frontend/dist/`-এ তৈরি হয়। Production-এ backend-এর CORS allowed origins-এ frontend domain যোগ করুন (`Backend/main.py`), HTTPS ব্যবহার করুন এবং স্থায়ী `AUTH_SECRET` configure করুন। Frontend-কে শুধু static host-এ deploy করলেই API/database চালু হয় না—Backend-ও deploy করতে হবে।
+- The backend creates its database tables at startup and migrates missing project columns in existing databases.
+- The SQLite database is created at `Backend/personal.db`. Back it up as needed.
+- Uploaded images are stored in `Backend/Uploads/`. Keep both the database and upload directory on persistent storage; ephemeral hosts may remove them during redeployment.
+- `/projects/all` returns `404` when there are no projects.
+- Hiding the admin page is not access control; write endpoints are protected by backend authorization.
+- Never commit `AUTH_SECRET`, passwords, or other credentials.
 
-## Data ও deployment সংক্রান্ত নোট
-
-- Backend startup-এ database table তৈরি করে এবং আগের database-এ project-এর নতুন column থাকলে migration চালায়।
-- SQLite database path `Backend/personal.db`; database file backup করে রাখুন।
-- Uploaded image `Backend/Uploads/`-এ থাকে। Database এবং এই folder দুটোই persistent storage-এ রাখতে হবে; ephemeral hosting-এ redeploy হলে ফাইল হারাতে পারে।
-- `/projects/all`-এ কোনো project না থাকলে API `404` ফেরত দেয়।
-- Admin screen লুকানো থাকাই access control নয়; write endpoint-গুলো backend-এ admin role দিয়ে সুরক্ষিত।
-- `AUTH_SECRET`, password বা অন্য secret কখনো Git-এ commit করবেন না।
-
-## আরও তথ্য
+## More documentation
 
 - [Frontend README](Frontend/README.md)
-- [Admin/API behavior guide](Frontend/AdminReadmi.md)
+- [Admin panel guide](Frontend/AdminReadmi.md)
 - [Backend API reference](Backend/APIsReadme.md)
