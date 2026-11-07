@@ -1,6 +1,3 @@
-import logging
-import os
-from contextlib import asynccontextmanager
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, Depends, HTTPException, Request, status
 from fastapi.staticfiles import StaticFiles
@@ -9,55 +6,15 @@ from pydantic import AliasChoices, BaseModel, Field
 from sqlalchemy.orm import Session
 from urllib.parse import urlsplit
 
-from Auth import hash_password, require_admin, router as auth_router
+from Auth import require_admin, router as auth_router
 from Upload import UPLOAD_DIR, router as upload_router
-from database import Base, SessionLocal, engine, get_db, migrate_project_columns
-from models import Images, ProjectFeatures, Projects, Skills, Users
-
-
-def bootstrap_admin():
-    username = os.getenv("BOOTSTRAP_ADMIN_USERNAME", "Admin").strip()
-    if not username:
-        raise RuntimeError("BOOTSTRAP_ADMIN_USERNAME cannot be empty")
-
-    db = SessionLocal()
-    try:
-        user = db.query(Users).filter(Users.username == username).first()
-        if user:
-            if user.role != "admin":
-                raise RuntimeError(
-                    f"Bootstrap username already belongs to a non-admin user: {username}"
-                )
-            return
-
-        password = os.getenv("BOOTSTRAP_ADMIN_PASSWORD")
-        if not password:
-            raise RuntimeError(
-                "Set BOOTSTRAP_ADMIN_PASSWORD in the deployment environment "
-                "to create the initial admin account"
-            )
-
-        db.add(Users(
-            username=username,
-            password_hash=hash_password(password),
-            role="admin",
-        ))
-        db.commit()
-        logging.getLogger(__name__).info("Created bootstrap admin account: %s", username)
-    finally:
-        db.close()
-
-
-@asynccontextmanager
-async def lifespan(_app: FastAPI):
-    bootstrap_admin()
-    yield
+from database import Base, engine, get_db, migrate_project_columns
+from models import Images, ProjectFeatures, Projects, Skills
 
 app = FastAPI(
     title="Portfolio API",
     description="API for managing portfolio projects, technologies, and images.",
     version="1.0.0",
-    lifespan=lifespan,
 )
 
 app.mount(
@@ -222,6 +179,9 @@ def show_all_projects(request: Request, db: Session = Depends(get_db)):
     projects = db.query(Projects).order_by(
         Projects.priority.desc(), Projects.id.asc()
     ).all()
+    if not projects:
+        raise HTTPException(status_code=404, detail="Project not found")
+
     return [serialize_project(project, request, db) for project in projects]
 
 

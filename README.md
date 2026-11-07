@@ -68,8 +68,6 @@ Configure a persistent signing secret before starting the API. Generate one with
 ```powershell
 python -c "import secrets; print(secrets.token_urlsafe(48))"
 $env:AUTH_SECRET = "<paste-the-generated-secret-here>"
-$env:BOOTSTRAP_ADMIN_USERNAME = "Admin"
-$env:BOOTSTRAP_ADMIN_PASSWORD = "<set the requested password here>"
 uvicorn main:app --reload
 ```
 
@@ -80,17 +78,17 @@ The backend is available at:
 
 If `AUTH_SECRET` is not configured, the backend creates a temporary signing key. Existing tokens stop working after a restart. Production deployments must configure a persistent secret and must not commit it to source control.
 
-### 2. Automatic admin account setup
+### 2. Create an admin account
 
-On first startup, the backend creates an admin account using
-`BOOTSTRAP_ADMIN_USERNAME` (defaults to `Admin`) and
-`BOOTSTRAP_ADMIN_PASSWORD`. Set the password in your deployment platform's
-environment-variable or secret settings; the server will fail to start on a
-fresh database if it is missing. The password is only used when creating the
-account and is never reset on later deployments. Keep it out of source control.
+Open another terminal, activate the backend virtual environment, and run:
 
-Sign in to `/admin` with the configured credentials. Use `create_user.py` when
-you need to add further user accounts.
+```powershell
+cd Backend
+.\.venv\Scripts\Activate.ps1
+python create_user.py shuvo your-strong-password admin
+```
+
+Replace `shuvo` and `your-strong-password` with your chosen username and password. Quote the password if it contains spaces. If you omit the `admin` role, the account is created as a regular user and cannot use admin-only endpoints. Sign in to `/admin` with the account credentials.
 
 > If PowerShell blocks virtual environment activation, run commands with `.venv\Scripts\python.exe` instead.
 
@@ -147,10 +145,9 @@ For production, configure the same variable before running `npm run build`. The 
 ## Data and deployment notes
 
 - The backend creates its database tables at startup and migrates missing project columns in existing databases.
-- The initial admin account is created at startup from `BOOTSTRAP_ADMIN_USERNAME` and `BOOTSTRAP_ADMIN_PASSWORD`; an existing admin account is left unchanged.
 - The SQLite database is created at `Backend/personal.db`. Back it up as needed.
 - Uploaded images are stored in `Backend/Uploads/`. Keep both the database and upload directory on persistent storage; ephemeral hosts may remove them during redeployment.
-- `/projects/all` returns an empty array when there are no projects.
+- `/projects/all` returns `404` when there are no projects.
 - Hiding the admin page is not access control; write endpoints are protected by backend authorization.
 - Never commit `AUTH_SECRET`, passwords, or other credentials.
 
