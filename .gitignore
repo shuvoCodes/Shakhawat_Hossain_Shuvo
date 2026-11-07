@@ -1,0 +1,15 @@
+.env
+.env.*
+!.env.example
+
+__pycache__/
+*.py[cod]
+
+Backend/.venv/
+Backend/venv/
+Backend/personal.db
+Backend/personal.db-*
+Backend/Uploads/
+
+Frontend/node_modules/
+Frontend/dist/
