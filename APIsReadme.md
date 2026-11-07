@@ -152,7 +152,7 @@ If omitted, `features`, `technologies`, and `images` default to empty lists. Def
 
 ### `GET /projects/all`
 
-Return all projects with their details. Projects are sorted by descending priority and then ascending ID. Returns `404` when no projects exist.
+Return all projects with their details. Projects are sorted by descending priority and then ascending ID. Returns an empty array when no projects exist.
 
 ### `GET /projects/{project_id}`
 
