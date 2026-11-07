@@ -2,14 +2,15 @@
 .env.*
 !.env.example
 
+.venv/
 __pycache__/
+*.pyc
 *.py[cod]
+*.db
+*.db-*
 
 Backend/.venv/
 Backend/venv/
-Backend/personal.db
-Backend/personal.db-*
-Backend/Uploads/
 
 Frontend/node_modules/
 Frontend/dist/
