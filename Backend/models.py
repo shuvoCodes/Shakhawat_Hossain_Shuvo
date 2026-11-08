@@ -1,5 +1,5 @@
 from database import Base
-from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, text
+from sqlalchemy import Boolean, Column, ForeignKey, Index, Integer, String, text
 
 class Projects(Base):
     __tablename__ = 'projects'
@@ -9,7 +9,7 @@ class Projects(Base):
     description = Column(String, nullable=False)
     category = Column(String, nullable=False, default="frontend", server_default="frontend")
     status = Column(String, nullable=False, default="in_progress", server_default="in_progress")
-    featured = Column(Boolean, nullable=False, default=False, server_default=text("0"))
+    featured = Column(Boolean, nullable=False, default=False, server_default=text("false"))
     priority = Column(Integer, nullable=False, default=0, server_default=text("0"))
     live_url = Column(String, nullable=True)
     frontend_source_url = Column("github_url", String, nullable=True)
@@ -42,8 +42,23 @@ class Images(Base):
 
 class Users(Base):
     __tablename__ = "users"
+    __table_args__ = (
+        Index(
+            "uq_users_single_account",
+            text("(1)"),
+            unique=True,
+        ),
+        Index(
+            "uq_users_single_admin",
+            "role",
+            unique=True,
+            sqlite_where=text("role = 'admin'"),
+            postgresql_where=text("role = 'admin'"),
+        ),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     username = Column(String(100), unique=True, nullable=False, index=True)
     password_hash = Column(String(256), nullable=False)
     role = Column(String(20), nullable=False, default="user")
+    token_version = Column(Integer, nullable=False, default=0, server_default=text("0"))

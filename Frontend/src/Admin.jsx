@@ -17,6 +17,7 @@ import {
   FiX,
 } from "react-icons/fi";
 import { AuthContext } from "./Context/AuthProvider";
+import { BrandMark, BrandText } from "./Components/BrandIdentity";
 
 import API_BASE_URL from "./Base/baseUrl";
 
@@ -234,6 +235,8 @@ export default function Admin() {
   const [token, setToken] = useState(getStoredToken);
   const [credentials, setCredentials] = useState({ username: "", password: "" });
   const [loginBusy, setLoginBusy] = useState(false);
+  const [setupRequired, setSetupRequired] = useState(false);
+  const [setupStatusLoading, setSetupStatusLoading] = useState(true);
   const [projects, setProjects] = useState([]);
   const [page, setPage] = useState("dashboard");
   const [selectedProject, setSelectedProject] = useState(null);
@@ -256,6 +259,7 @@ export default function Admin() {
     setProjects([]);
     setSelectedProject(null);
     setPage("dashboard");
+    setCredentials({ username: "", password: "" });
     if (expired) {
       setError("Your session has expired. Please sign in again.");
       setNotice("");
@@ -270,6 +274,25 @@ export default function Admin() {
     window.addEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
     return () => window.removeEventListener(SESSION_EXPIRED_EVENT, handleSessionExpired);
   }, [logout]);
+
+  useEffect(() => {
+    if (token) return undefined;
+    let active = true;
+    setSetupStatusLoading(true);
+    request("/auth/setup/status")
+      .then((data) => {
+        if (active) setSetupRequired(Boolean(data?.setup_required));
+      })
+      .catch((cause) => {
+        if (active) setError(`Could not check admin setup status. ${cause.message}`);
+      })
+      .finally(() => {
+        if (active) setSetupStatusLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [token]);
 
   useEffect(() => {
     if (!token) return undefined;
@@ -351,20 +374,58 @@ export default function Admin() {
     return { technologyCount, imageCount, latest };
   }, [projects]);
 
+  const resolveAccessToken = (data) => {
+    const accessToken = data?.access_token || data?.token;
+    if (!accessToken) {
+      throw new Error("The auth response did not include an access token.");
+    }
+    localStorage.setItem(TOKEN_EXPIRY_KEY, String(getTokenExpiry(data, accessToken)));
+    localStorage.setItem(TOKEN_KEY, accessToken);
+    setToken(accessToken);
+    setSetupRequired(false);
+  };
+
   const login = async (event) => {
     event.preventDefault();
     setLoginBusy(true);
     setError("");
+    setNotice("");
     try {
-      const data = await request("/auth/login", { method: "POST", body: credentials });
-      const accessToken = data?.access_token || data?.token;
-      if (!accessToken) throw new Error("The login response did not include an access token.");
-      localStorage.setItem(TOKEN_EXPIRY_KEY, String(getTokenExpiry(data, accessToken)));
-      localStorage.setItem(TOKEN_KEY, accessToken);
-      setToken(accessToken);
+      const payload = {
+        username: credentials.username.trim(),
+        password: credentials.password.trim(),
+      };
+      if (!payload.username || !payload.password) {
+        throw new Error("Username and password are required.");
+      }
+      const data = await request("/auth/login", { method: "POST", body: payload });
+      resolveAccessToken(data);
       setNotice("Signed in successfully.");
     } catch (cause) {
       setError(`Could not sign in. ${cause.message}`);
+    } finally {
+      setLoginBusy(false);
+    }
+  };
+
+  const createFirstAdmin = async (event) => {
+    event.preventDefault();
+    setLoginBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const payload = {
+        username: credentials.username.trim(),
+        password: credentials.password.trim(),
+      };
+      if (payload.username.length < 6 || payload.password.length < 6) {
+        throw new Error("Username and password must be at least 6 characters long.");
+      }
+      const data = await request("/auth/register", { method: "POST", body: payload });
+      resolveAccessToken(data);
+      setNotice("Admin account created successfully.");
+    } catch (cause) {
+      setError(`Could not create the admin account. ${cause.message}`);
     } finally {
       setLoginBusy(false);
     }
@@ -528,22 +589,59 @@ export default function Admin() {
   if (!token) {
     return (
       <main className="flex min-h-screen items-center justify-center px-5 py-12">
-        <form onSubmit={login} className="glass-panel w-full max-w-md rounded-3xl p-8">
-          <a href="/" className="mb-8 inline-flex items-center gap-3">
-            <span className="brand-mark">S</span>
-            <span><strong className="block font-display">SHUVO</strong><small className="text-secondary-light dark:text-secondary-dark">Portfolio Admin</small></span>
+        <section className="glass-panel w-full max-w-md rounded-3xl p-8">
+          <a href="/" className="brand-shell mb-8 inline-flex items-center gap-3">
+            <BrandMark className="brand-mark" />
+            <BrandText compact />
           </a>
           <span className="eyebrow">Admin Panel</span>
-          <h1 className="mb-2 text-3xl">Welcome back</h1>
-          <p className="mb-7 text-sm text-secondary-light dark:text-secondary-dark">Sign in to manage your portfolio projects.</p>
-          <div className="space-y-4">
-            <FormField label="Username" type="text" autoComplete="username" value={credentials.username} onChange={(event) => setCredentials({ ...credentials, username: event.target.value })} required />
-            <FormField label="Password" type="password" autoComplete="current-password" value={credentials.password} onChange={(event) => setCredentials({ ...credentials, password: event.target.value })} required />
-          </div>
-          {error && <p role="alert" className="mt-4 text-sm text-red-600 dark:text-red-400">{error}</p>}
-          <button className="btn-primary mt-6 w-full" disabled={loginBusy}>{loginBusy ? "Signing in…" : "Sign in"}</button>
+          {setupStatusLoading ? (
+            <p className="mt-5 text-sm text-secondary-light dark:text-secondary-dark">Checking admin setup…</p>
+          ) : (
+            <>
+              <h1 className="mb-2 text-3xl">{setupRequired ? "Create the first admin" : "Welcome back"}</h1>
+              <p className="mb-7 text-sm text-secondary-light dark:text-secondary-dark">
+                {setupRequired
+                  ? "Create the initial admin account for this database before you can manage portfolio projects."
+                  : "Sign in to manage your portfolio projects."}
+              </p>
+              <form onSubmit={setupRequired ? createFirstAdmin : login}>
+                <div className="space-y-4">
+                  <FormField
+                    label="Username"
+                    type="text"
+                    autoComplete="username"
+                    value={credentials.username}
+                    onChange={(event) => setCredentials({ ...credentials, username: event.target.value })}
+                    required
+                  />
+                  <FormField
+                    label="Password"
+                    type="password"
+                    autoComplete={setupRequired ? "new-password" : "current-password"}
+                    minLength={6}
+                    value={credentials.password}
+                    onChange={(event) => setCredentials({ ...credentials, password: event.target.value })}
+                    required
+                  />
+                </div>
+                {error && <p role="alert" className="mt-4 text-sm text-red-600 dark:text-red-400">{error}</p>}
+                {notice && <p role="status" className="mt-4 text-sm text-green-700 dark:text-green-400">{notice}</p>}
+                <button className="btn-primary mt-6 w-full" disabled={loginBusy}>
+                  {loginBusy
+                    ? (setupRequired ? "Creating account…" : "Signing in…")
+                    : (setupRequired ? "Create admin account" : "Sign in")}
+                </button>
+              </form>
+              {!setupRequired && (
+                <p className="mt-5 text-center text-xs text-secondary-light dark:text-secondary-dark">
+                  Use the admin username and password for this portfolio.
+                </p>
+              )}
+            </>
+          )}
           <a className="mt-5 block text-center text-sm text-secondary-light hover:text-primary-light dark:text-secondary-dark dark:hover:text-primary-dark" href="/">← Back to portfolio</a>
-        </form>
+        </section>
       </main>
     );
   }
@@ -558,9 +656,9 @@ export default function Admin() {
   return (
     <div className="min-h-screen md:flex">
       <aside className="glass-panel flex shrink-0 flex-col border-b p-4 md:min-h-screen md:w-64 md:border-b-0 md:border-r md:p-6">
-        <a href="/" className="mb-5 flex items-center gap-3 md:mb-10">
-          <span className="brand-mark">S</span>
-          <span><strong className="block font-display">SHUVO</strong><small className="text-secondary-light dark:text-secondary-dark">Portfolio Admin</small></span>
+        <a href="/" className="brand-shell mb-5 flex items-center gap-3 md:mb-10">
+          <BrandMark className="brand-mark" />
+          <BrandText compact />
         </a>
         <nav className="flex gap-1 overflow-x-auto md:flex-col">
           {navItems.map(({ id, label, icon: Icon }) => (

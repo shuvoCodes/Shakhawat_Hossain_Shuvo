@@ -1,3 +1,5 @@
+import os
+
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, Depends, HTTPException, Request, status
 from fastapi.staticfiles import StaticFiles
@@ -8,7 +10,7 @@ from urllib.parse import urlsplit
 
 from Auth import require_admin, router as auth_router
 from Upload import UPLOAD_DIR, router as upload_router
-from database import Base, engine, get_db, migrate_project_columns
+from database import Base, engine, get_db, migrate_auth_columns, migrate_project_columns
 from models import Images, ProjectFeatures, Projects, Skills
 
 app = FastAPI(
@@ -25,6 +27,7 @@ app.mount(
 
 Base.metadata.create_all(bind=engine)
 migrate_project_columns()
+migrate_auth_columns()
 
 
 class FeatureCreate(BaseModel):
@@ -79,6 +82,11 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:5173",  # React + Vite
         "http://localhost:3000",  # React
+        *[
+            origin.strip()
+            for origin in os.getenv("CORS_ORIGINS", "").split(",")
+            if origin.strip()
+        ],
     ],
     allow_credentials=True,
     allow_methods=["*"],

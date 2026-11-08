@@ -1,32 +1,45 @@
-import React, { useContext, useState } from "react";
+import React, { useContext, useEffect, useState } from "react";
 import { TiThMenuOutline } from "react-icons/ti";
 import { Link, useLocation } from "react-router-dom";
 import { AuthContext } from "../Context/AuthProvider";
+import { BrandMark, BrandText } from "./BrandIdentity";
 
 const navLinks = ["Home", "About", "Skills", "Projects", "Resume", "Contact"];
 
 const Navbar = () => {
   const { theme, SUN_PATH, MOON_PATH, toggleTheme } = useContext(AuthContext);
   const [menuOpen, setMenuOpen] = useState(false);
-  const { pathname } = useLocation();
-  const onProjectsPage = pathname === "/projects";
+  const { pathname, hash } = useLocation();
+
+  useEffect(() => {
+    if (!hash) return undefined;
+
+    const firstFrame = window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        document.getElementById(hash.slice(1))?.scrollIntoView({ behavior: "smooth" });
+      });
+    });
+    return () => window.cancelAnimationFrame(firstFrame);
+  }, [hash, pathname]);
 
   const renderLinks = (mobile = false) =>
     navLinks.map((label) => {
-      const destination =
-        label === "Projects"
-          ? onProjectsPage
-            ? "/projects"
-            : "#projects"
-          : onProjectsPage
-            ? `/#${label.toLowerCase()}`
-            : `#${label.toLowerCase()}`;
-
+      const destination = pathname === "/"
+        ? `#${label.toLowerCase()}`
+        : `/#${label.toLowerCase()}`;
+      const handleClick = () => {
+        if (mobile) setMenuOpen(false);
+        if (destination === `${pathname}${hash}` || (pathname === "/" && destination === hash)) {
+          window.requestAnimationFrame(() => {
+            document.getElementById(label.toLowerCase())?.scrollIntoView({ behavior: "smooth" });
+          });
+        }
+      };
       return (
         <Link
           key={label}
           to={destination}
-          onClick={() => mobile && setMenuOpen(false)}
+          onClick={handleClick}
           className={
             mobile
               ? "block rounded-xl px-4 py-3 text-sm font-medium text-secondary-light transition-colors hover:bg-accent-light/10 hover:text-primary-light dark:text-secondary-dark dark:hover:bg-accent-dark/10 dark:hover:text-primary-dark"
@@ -41,14 +54,9 @@ const Navbar = () => {
   return (
     <div className="sticky top-2 z-50 pt-[env(safe-area-inset-top,0px)] md:top-4">
       <nav className="glass-panel relative mx-auto mt-3.5 flex max-w-[1180px] flex-wrap items-center justify-between rounded-[24px] p-2.5 md:rounded-full">
-        <Link to={onProjectsPage ? "/#home" : "#home"} className="flex items-center gap-2.5 pl-1" aria-label="Shuvo home">
-          <span className="brand-mark rounded-full">S</span>
-          <span className="leading-[1.15]">
-            <strong className="block font-display text-[14.5px] font-semibold">SHUVO</strong>
-            <span className="text-[11.5px] text-secondary-light dark:text-secondary-dark">
-              Full Stack Developer
-            </span>
-          </span>
+        <Link to={pathname === "/" ? "#home" : "/#home"} className="brand-shell flex items-center gap-3 pl-1" aria-label="Shuvo home">
+          <BrandMark className="brand-mark" />
+          <BrandText />
         </Link>
 
         <div className="hidden gap-1 md:flex">{renderLinks()}</div>
@@ -73,7 +81,7 @@ const Navbar = () => {
             </svg>
           </button>
 
-          <Link to={onProjectsPage ? "/#contact" : "#contact"} className="btn-primary btn-sm hidden md:inline-flex">
+          <Link to={pathname === "/" ? "#contact" : "/#contact"} className="btn-primary btn-sm hidden md:inline-flex">
             Let's Talk
           </Link>
 

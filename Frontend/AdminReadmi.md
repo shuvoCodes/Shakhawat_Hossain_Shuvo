@@ -28,6 +28,8 @@ The admin page includes project management only; workshop management is not show
 
 **Quick actions:** + New Project · View Portfolio
 
+**First admin setup:** If the database is empty, create the first admin with `POST /auth/register` using a username and password of at least 6 characters. Once created, the admin signs in with `POST /auth/login`.
+
 ---
 
 ## 3. Projects List Page
@@ -130,14 +132,17 @@ Use `DELETE /projects/{project_id}/images/{image_id}` to remove an image after c
 
 | Method | Endpoint | Purpose |
 |---|---|---|
+| POST | `/auth/register` | Create the first admin account when the database is empty |
+| GET | `/auth/setup/status` | Check whether first-admin setup is required |
 | POST | `/auth/login` | Sign in and receive an admin token |
 | GET | `/projects/all` | List portfolio projects |
 | POST | `/projects` | Create Project |
 | GET | `/projects/{project_id}` | Get Project |
 | PATCH | `/projects/{project_id}` | Update Project |
 | DELETE | `/projects/{project_id}` | Delete Project |
-| PATCH | `/projects/{project_id}` | Update project technologies |
 | POST | `/projects/{project_id}/images` | Upload Image |
 | GET | `/projects/{project_id}/images` | Get Project Images |
 | PUT | `/projects/{project_id}/images/{image_id}` | Replace Project Image |
 | DELETE | `/projects/{project_id}/images/{image_id}` | Delete Project Image |
+
+Admin registration is limited to one account per database. On a new empty database, create the first admin with `POST /auth/register`. Additional registrations are rejected, and any later sign-in uses `POST /auth/login`.

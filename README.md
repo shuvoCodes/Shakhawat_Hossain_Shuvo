@@ -60,14 +60,29 @@ cd Backend
 py -m venv .venv
 .\.venv\Scripts\Activate.ps1
 python -m pip install --upgrade pip
-python -m pip install fastapi "uvicorn[standard]" sqlalchemy pillow python-multipart
+python -m pip install -r requirements.txt
 ```
 
-Configure a persistent signing secret before starting the API. Generate one with the first command, then use its output as the value for `AUTH_SECRET`:
+Set up Firebase email OTP locally. In the Firebase console, enable Firestore, then install the **Trigger Email** extension and configure its SMTP/email provider. Copy the example environment file and edit it:
+
+```powershell
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+notepad .env
+```
+
+Set `FIREBASE_PROJECT_ID` to your Firebase project ID. Create a Firebase service account with Firestore access, download its JSON key as `Backend/firebase-service-account.json`, and keep the file private (it is Git-ignored). The extension's Firestore collection must match `FIREBASE_EMAIL_COLLECTION` (default: `mail`).
+
+The backend writes OTP email jobs into Firestore; the Trigger Email extension delivers them. If Gmail is the extension's sender, configure the Gmail App Password in the extension's settings, not in the backend `.env`. The OTP recipient defaults to `shuvo.hossain.dev@gmail.com`.
+
+Generate a persistent signing secret and add its output as `AUTH_SECRET=...` in `.env`:
 
 ```powershell
 python -c "import secrets; print(secrets.token_urlsafe(48))"
-$env:AUTH_SECRET = "<paste-the-generated-secret-here>"
+```
+
+Then start the API:
+
+```powershell
 uvicorn main:app --reload
 ```
 
@@ -78,17 +93,9 @@ The backend is available at:
 
 If `AUTH_SECRET` is not configured, the backend creates a temporary signing key. Existing tokens stop working after a restart. Production deployments must configure a persistent secret and must not commit it to source control.
 
-### 2. Create an admin account
+### 2. Create the first admin
 
-Open another terminal, activate the backend virtual environment, and run:
-
-```powershell
-cd Backend
-.\.venv\Scripts\Activate.ps1
-python create_user.py shuvo your-strong-password admin
-```
-
-Replace `shuvo` and `your-strong-password` with your chosen username and password. Quote the password if it contains spaces. If you omit the `admin` role, the account is created as a regular user and cannot use admin-only endpoints. Sign in to `/admin` with the account credentials.
+After starting the API and frontend, open `/admin`, choose **Create the first admin account**, request the OTP, and enter it with your desired username and a password of at least 12 characters. The same configured email supports **Forgot username or password?** recovery.
 
 > If PowerShell blocks virtual environment activation, run commands with `.venv\Scripts\python.exe` instead.
 
@@ -140,14 +147,18 @@ $env:VITE_API_BASE_URL = "https://your-api.example.com"
 npm run dev
 ```
 
-For production, configure the same variable before running `npm run build`. The generated static site is placed in `Frontend/dist/`. Deploy the backend separately; deploying only the frontend does not start the API or database. Add the deployed frontend origin to the backend's CORS allowlist in `Backend/main.py`, use HTTPS, and configure a persistent `AUTH_SECRET`.
+For production, configure the same variable before running `npm run build`. The generated static site is placed in `Frontend/dist/`. Deploy the backend separately; deploying only the frontend does not start the API or database. Set `CORS_ORIGINS` to the deployed frontend origin (or a comma-separated list), use HTTPS, and configure persistent `AUTH_SECRET`, `ADMIN_EMAIL`, and SMTP settings in the backend host's environment. Never commit credentials.
+
+The backend reads `DATABASE_URL`; it defaults to local SQLite and also accepts PostgreSQL URLs, including Supabase connection strings. For Supabase, set `DATABASE_URL` to the database connection string and keep its required SSL parameters. PostgreSQL support is included; the application does not create the Supabase project or obtain its connection string automatically.
+
+For a future Render deployment, use `Backend` as the service root, `pip install -r requirements.txt` as the build command, and `uvicorn main:app --host 0.0.0.0 --port $PORT` as the start command. Set `DATABASE_URL`, a persistent `AUTH_SECRET`, `ADMIN_EMAIL`, `FIREBASE_PROJECT_ID`, `FIREBASE_EMAIL_COLLECTION`, `FIREBASE_SERVICE_ACCOUNT_JSON`, and `CORS_ORIGINS` in Render's environment settings. Put the full service-account JSON in Render's secret environment variable; do not commit it. The Firebase Trigger Email extension still needs its own sender/provider configuration. Render reads those environment variables; it does not read the local `.env`. For a separately hosted frontend, set `VITE_API_BASE_URL` to the Render API URL when building the frontend and allow that frontend origin in `CORS_ORIGINS`.
 
 ## Data and deployment notes
 
 - The backend creates its database tables at startup and migrates missing project columns in existing databases.
 - The SQLite database is created at `Backend/personal.db`. Back it up as needed.
 - Uploaded images are stored in `Backend/Uploads/`. Keep both the database and upload directory on persistent storage; ephemeral hosts may remove them during redeployment.
-- `/projects/all` returns `404` when there are no projects.
+- `/projects/all` returns an empty array when there are no projects.
 - Hiding the admin page is not access control; write endpoints are protected by backend authorization.
 - Never commit `AUTH_SECRET`, passwords, or other credentials.
 

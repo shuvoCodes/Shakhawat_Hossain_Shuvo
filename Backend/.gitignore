@@ -1,0 +1,17 @@
+.env
+.env.*
+!.env.example
+
+.venv/
+__pycache__/
+*.pyc
+*.py[cod]
+*.db
+*.db-*
+/firebase-service-account.json
+
+Backend/.venv/
+Backend/venv/
+
+Frontend/node_modules/
+Frontend/dist/

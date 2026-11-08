@@ -22,13 +22,35 @@ Authorization: Bearer <access_token>
 
 Tokens expire after 24 hours. Configure a persistent, private `AUTH_SECRET` environment variable in production. If it is missing or set to the development placeholder, the server creates a temporary signing key. Tokens will stop working after a restart, and multiple workers will not share the temporary key.
 
-Create an admin account from the `Backend` directory:
+On a new, empty database, create the first admin account directly with `POST /auth/register` and a username and password of at least 6 characters. No email or OTP verification is used. Once created, additional registration attempts are rejected; use `POST /auth/login` to sign in.
+
+Account registration is limited to one account per database. A database-level unique index prevents concurrent or direct creation of another account. If an existing database already contains multiple accounts, the backend will stop during startup; remove the extra accounts before enabling this restriction. The CLI below may be used to create the initial account on an empty database only; it rejects attempts to add another account. Password recovery is not available through the API.
+
+The CLI remains available for local, direct database administration:
 
 ```bash
 python create_user.py <username> <password> admin
 ```
 
-If the role is omitted, the account is created as a regular `user`. Only accounts with the `admin` role can use protected write endpoints.
+If the role is omitted, the initial account is created as a regular `user`; only an `admin` account can use protected write endpoints.
+
+### Account endpoints
+
+| Method | Endpoint | Purpose |
+|---|---|---|
+| `GET` | `/auth/setup/status` | Check whether the first account is required |
+| `POST` | `/auth/register` | Create the first admin account |
+
+Registration accepts:
+
+```json
+{
+  "username": "admin",
+  "password": "123456"
+}
+```
+
+Successful registration returns the same token response as login.
 
 Use either of the following login endpoints to obtain an access token.
 

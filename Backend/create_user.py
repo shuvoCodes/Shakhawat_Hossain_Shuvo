@@ -1,8 +1,11 @@
-"""Create an account directly in the configured database.
+"""Create the first account directly in the configured database.
 
 Usage: python create_user.py <username> <password> [admin|user]
+This command fails if the database already contains an account.
 """
 import sys
+
+from sqlalchemy.exc import IntegrityError
 
 from database import Base, engine, SessionLocal
 from Auth import hash_password
@@ -24,10 +27,20 @@ def main():
     Base.metadata.create_all(bind=engine)
     db = SessionLocal()
     try:
+        if db.query(Users.id).first():
+            raise SystemExit(
+                "Only one account is allowed; an account already exists."
+            )
         if db.query(Users).filter(Users.username == username).first():
             raise SystemExit(f"Username already exists: {username}")
         db.add(Users(username=username, password_hash=hash_password(password), role=role))
-        db.commit()
+        try:
+            db.commit()
+        except IntegrityError:
+            db.rollback()
+            raise SystemExit(
+                "Only one account is allowed; an account already exists."
+            ) from None
         print(f"Created {role} account: {username}")
     finally:
         db.close()
