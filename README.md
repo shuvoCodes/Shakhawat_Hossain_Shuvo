@@ -17,7 +17,7 @@ This repository contains Shakhawat Hossain Shuvo's personal portfolio website. T
 |---|---|
 | Frontend | React 18, Vite, React Router, Tailwind CSS |
 | Backend | Python, FastAPI, Pydantic, SQLAlchemy |
-| Database | SQLite |
+| Database | PostgreSQL (Supabase) |
 | Image processing | Pillow |
 
 ## Repository structure
@@ -29,7 +29,7 @@ This repository contains Shakhawat Hossain Shuvo's personal portfolio website. T
 │   ├── Auth.py           # Login, tokens, and admin authorization
 │   ├── Upload.py         # Project image upload, update, and deletion
 │   ├── models.py         # SQLAlchemy models
-│   ├── database.py       # SQLite connection and schema migration
+│   ├── database.py       # PostgreSQL connection and schema migration
 │   ├── create_user.py    # Create user and admin accounts
 │   ├── APIsReadme.md     # Backend API reference
 │   └── Uploads/          # Uploaded images (created by the app)
@@ -147,14 +147,14 @@ npm run dev
 
 For production, configure the same variable before running `npm run build`. The generated static site is placed in `Frontend/dist/`. Deploy the backend separately; deploying only the frontend does not start the API or database. Set `CORS_ORIGINS` to the deployed frontend origin (or a comma-separated list), use HTTPS, and configure a persistent `AUTH_SECRET` in the backend host's environment. Never commit credentials.
 
-The backend reads `DATABASE_URL`; it defaults to local SQLite and also accepts PostgreSQL URLs, including Supabase connection strings. For Supabase, set `DATABASE_URL` to the database connection string and keep its required SSL parameters. PostgreSQL support is included; the application does not create the Supabase project or obtain its connection string automatically.
+The backend requires `DATABASE_URL` and reads it from `Backend/.env` or the host's environment. Copy `Backend/.env.example` to `Backend/.env` for local development and replace its placeholders with your Supabase connection details. Keep `.env` private, set `sslmode=require`, and configure a long, random `AUTH_SECRET`. The application does not create the Supabase project or obtain its connection string automatically.
 
 For a future Render deployment, use `Backend` as the service root, `pip install -r requirements.txt` as the build command, and `uvicorn main:app --host 0.0.0.0 --port $PORT` as the start command. Set `DATABASE_URL`, a persistent `AUTH_SECRET`, and `CORS_ORIGINS` in Render's environment settings. Render reads those environment variables; it does not read the local `.env`. For a separately hosted frontend, set `VITE_API_BASE_URL` to the Render API URL when building the frontend and allow that frontend origin in `CORS_ORIGINS`.
 
 ## Data and deployment notes
 
 - The backend creates its database tables at startup and migrates missing project columns in existing databases.
-- The SQLite database is created at `Backend/personal.db`. Back it up as needed.
+- Existing data in `Backend/personal.db` is not copied to Supabase automatically; migrate it separately if you need to preserve it.
 - Uploaded images are stored in `Backend/Uploads/`. Keep both the database and upload directory on persistent storage; ephemeral hosts may remove them during redeployment.
 - `/projects/all` returns an empty array when there are no projects.
 - Hiding the admin page is not access control; write endpoints are protected by backend authorization.
