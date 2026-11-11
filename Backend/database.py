@@ -1,4 +1,4 @@
-```python
+
 import os
 
 from sqlalchemy import create_engine, inspect, text
@@ -151,4 +151,3 @@ def get_db():
         yield db
     finally:
         db.close()
-```
