@@ -102,7 +102,7 @@ const ProjectDetails = ({ project, onClose, level = 0 }) => {
                     <span className="tag">{projectDetails.categoryLabel}</span>
                     <span className="status-pill !mb-0">
                         <span className="fc-dot" />
-                        {projectDetails.status}
+                        {projectDetails.statusLabel}
                     </span>
                 </div>
                 <h2
@@ -114,6 +114,15 @@ const ProjectDetails = ({ project, onClose, level = 0 }) => {
                 <p className="text-[14.5px] leading-7 text-secondary-light dark:text-secondary-dark">
                     {projectDetails.details}
                 </p>
+
+                {projectDetails.timelineLabel && (
+                    <div className="mt-5">
+                        <h3 className="text-sm font-semibold">Project timeline</h3>
+                        <p className="mt-1 text-sm text-secondary-light dark:text-secondary-dark">
+                            {projectDetails.timelineLabel}
+                        </p>
+                    </div>
+                )}
 
                 {loadingDetails && (
                     <p role="status" className="mt-4 text-sm text-secondary-light dark:text-secondary-dark">

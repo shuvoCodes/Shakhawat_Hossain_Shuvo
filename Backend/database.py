@@ -1,10 +1,12 @@
 
+import os
+
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
-
 # Database URL
-DATABASE_URL = "postgresql://neondb_owner:npg_GHZ2hPF7jWdT@ep-summer-grass-beskfkta-pooler.c-9.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./personal.db")
+
 
 
 # Convert PostgreSQL URL to psycopg format

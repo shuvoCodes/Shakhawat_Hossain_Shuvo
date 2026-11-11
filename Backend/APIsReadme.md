@@ -228,6 +228,40 @@ On success, the endpoint returns the complete updated project. Returns `404` if 
 
 Delete the project and its feature, technology, and image records. Local `/uploads/` files belonging only to this project are also deleted. An admin token is required. Returns `204 No Content` on success or `404` if the project does not exist.
 
+## Resume
+
+The portfolio can link directly to the public `GET /resume` URL. The response is served as an attachment, so clicking the link downloads `resume.pdf`. An administrator can replace the current resume with `POST /resume`; the file is stored on the backend, not in the frontend's static assets.
+
+### `POST /resume`
+
+Upload or replace the resume. An admin token is required. Send the PDF in the `file` field as `multipart/form-data`.
+
+- Only PDF files are accepted (validated by the PDF file signature).
+- Maximum file size: 10 MB.
+- On success, returns `201 Created` with a public `download_url`.
+- Returns `400` for an empty or invalid file, and `413` if the size limit is exceeded.
+
+**cURL**
+
+```bash
+curl -X POST "http://localhost:8000/resume" \
+  -H "Authorization: Bearer <access_token>" \
+  -F "file=@resume.pdf"
+```
+
+**Response**
+
+```json
+{
+  "message": "Resume uploaded successfully",
+  "download_url": "http://localhost:8000/resume"
+}
+```
+
+### `GET /resume`
+
+Download the current resume. This endpoint is public and returns `resume.pdf` as an attachment. Returns `404` until a resume has been uploaded.
+
 ## Images
 
 ### `POST /projects/{project_id}/images`

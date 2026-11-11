@@ -1,9 +1,11 @@
+import os
 import io
 import uuid
 from pathlib import Path
 from urllib.parse import urlsplit
 
 from fastapi import APIRouter, Depends, File, HTTPException, Request, UploadFile, status
+from fastapi.responses import FileResponse
 from PIL import Image as PILImage, UnidentifiedImageError
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import Session
@@ -17,6 +19,8 @@ router = APIRouter(tags=["images"])
 BASE_DIR = Path(__file__).resolve().parent
 UPLOAD_DIR = BASE_DIR / "Uploads"
 UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+RESUME_PATH = UPLOAD_DIR / "resume.pdf"
+MAX_RESUME_SIZE = 10 * 1024 * 1024
 
 ALLOWED_TYPES = {
     "image/jpeg": ".jpg",
@@ -24,6 +28,45 @@ ALLOWED_TYPES = {
     "image/webp": ".webp",
     "image/gif": ".gif",
 }
+
+
+@router.post("/resume", status_code=status.HTTP_201_CREATED)
+async def upload_resume(
+    request: Request,
+    file: UploadFile = File(...),
+    _admin: Users = Depends(require_admin),
+):
+    temporary_path = UPLOAD_DIR / f".resume-{uuid.uuid4().hex}.tmp"
+    try:
+        content = await file.read(MAX_RESUME_SIZE + 1)
+        if len(content) > MAX_RESUME_SIZE:
+            raise HTTPException(status_code=413, detail="Resume must be 10 MB or smaller")
+        if not content:
+            raise HTTPException(status_code=400, detail="Empty resume file")
+        if not content.startswith(b"%PDF-"):
+            raise HTTPException(status_code=400, detail="Only valid PDF files are allowed")
+
+        temporary_path.write_bytes(content)
+        os.replace(temporary_path, RESUME_PATH)
+    finally:
+        temporary_path.unlink(missing_ok=True)
+        await file.close()
+
+    return {
+        "message": "Resume uploaded successfully",
+        "download_url": str(request.base_url).rstrip("/") + "/resume",
+    }
+
+
+@router.get("/resume", response_class=FileResponse)
+def download_resume():
+    if not RESUME_PATH.is_file():
+        raise HTTPException(status_code=404, detail="Resume not found")
+    return FileResponse(
+        path=RESUME_PATH,
+        media_type="application/pdf",
+        filename="resume.pdf",
+    )
 
 
 async def _save_uploaded_image(file: UploadFile) -> tuple[str, Path]:

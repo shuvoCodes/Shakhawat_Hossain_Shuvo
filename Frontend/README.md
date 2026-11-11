@@ -31,12 +31,13 @@ See the [Admin panel guide](./AdminReadmi.md) for the interface overview and the
 
 ## Configure the API URL
 
-For local development, the API base URL defaults to `/api` and Vite proxies requests to the local backend. To use a different backend origin, set `VITE_API_BASE_URL` before starting or building the frontend:
+For local development, the API base URL defaults to `/api` and Vite proxies requests to the local backend. To run the frontend locally against the deployed API instead, create `Frontend/.env.local` with:
 
-```powershell
-$env:VITE_API_BASE_URL = "https://your-api.example.com"
-npm run dev
+```env
+VITE_API_BASE_URL=https://shakhawat-hossain-shuvo.onrender.com
 ```
+
+Production builds default to the deployed portfolio API at `https://shakhawat-hossain-shuvo.onrender.com`. To use a different backend origin, set `VITE_API_BASE_URL` before starting or building the frontend. Restart Vite after changing the value.
 
 ## Build for production
 

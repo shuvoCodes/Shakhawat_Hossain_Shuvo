@@ -4,6 +4,7 @@ import {
   FiBox,
   FiCheck,
   FiChevronRight,
+  FiDownload,
   FiExternalLink,
   FiGrid,
   FiImage,
@@ -14,17 +15,59 @@ import {
   FiSun,
   FiTrash2,
   FiUpload,
-  FiX,
 } from "react-icons/fi";
+import toast from "react-hot-toast";
 import { AuthContext } from "./Context/AuthProvider";
 import { BrandMark, BrandText } from "./Components/BrandIdentity";
 
 import API_BASE_URL from "./Base/baseUrl";
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || API_BASE_URL || "http://localhost:8000").replace(/\/$/, "");
+const API_BASE = API_BASE_URL;
 const TOKEN_KEY = "shuvo-admin-token";
 const TOKEN_EXPIRY_KEY = "shuvo-admin-token-expires-at";
 const SESSION_EXPIRED_EVENT = "shuvo-admin-session-expired";
+const PROJECT_CATEGORIES = [
+  { value: "frontend", label: "Frontend" },
+  { value: "backend", label: "Backend" },
+  { value: "full_stack", label: "Full Stack" },
+  { value: "app", label: "App" },
+];
+const PROJECT_STATUSES = [
+  { value: "completed", label: "Completed" },
+  { value: "in_progress", label: "In Progress" },
+  { value: "on_hold", label: "On Hold" },
+  { value: "planned", label: "Planned" },
+];
+const STATUS_TIMELINE_FIELDS = {
+  completed: [
+    { name: "start_date", label: "Start date" },
+    { name: "end_date", label: "End date" },
+  ],
+  in_progress: [
+    { name: "start_date", label: "Start date" },
+  ],
+  on_hold: [
+    { name: "start_date", label: "Start date" },
+    { name: "last_updated", label: "Last updated" },
+  ],
+  planned: [
+    { name: "expected_start_date", label: "Expected start date" },
+  ],
+};
+
+function normalizeProjectStatus(status) {
+  const normalized = String(status || "in_progress").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  return PROJECT_STATUSES.some(({ value }) => value === normalized)
+    ? normalized
+    : "in_progress";
+}
+
+function getProjectStatusLabel(status) {
+  const normalized = String(status || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+  return PROJECT_STATUSES.find(({ value }) => value === normalized)?.label
+    || status
+    || "—";
+}
 
 function getStoredToken() {
   const token = localStorage.getItem(TOKEN_KEY);
@@ -130,12 +173,20 @@ function FormField({ label, className = "", ...props }) {
 }
 
 function ProjectForm({ initialProject, busy, onCancel, onSubmit }) {
+  const initialCategory = initialProject?.category || "frontend";
+  const categoryOptions = PROJECT_CATEGORIES.some(({ value }) => value === initialCategory)
+    ? PROJECT_CATEGORIES
+    : [...PROJECT_CATEGORIES, { value: initialCategory, label: initialCategory }];
   const [form, setForm] = useState(() => ({
     title: initialProject?.title || "",
     description: getDescription(initialProject || {}),
-    category: initialProject?.category || "frontend",
-    status: initialProject?.status || "in_progress",
+    category: initialCategory,
+    status: normalizeProjectStatus(initialProject?.status),
     priority: initialProject?.priority ?? 0,
+    start_date: initialProject?.start_date || "",
+    end_date: initialProject?.end_date || "",
+    last_updated: initialProject?.last_updated || "",
+    expected_start_date: initialProject?.expected_start_date || "",
     live_url: initialProject?.live_url || "",
     github_url: initialProject?.github_url || initialProject?.frontend_source_url || "",
     frontend_source_url: initialProject?.frontend_source_url || initialProject?.github_url || "",
@@ -166,7 +217,7 @@ function ProjectForm({ initialProject, busy, onCancel, onSubmit }) {
     const payload = {
       ...form,
       category: form.category.trim(),
-      status: form.status.trim(),
+      status: form.status,
       priority: Number(form.priority),
       technologies: technologyText.split(/[,\n]/).map((technology) => technology.trim()).filter(Boolean),
       features: form.features
@@ -177,6 +228,11 @@ function ProjectForm({ initialProject, busy, onCancel, onSubmit }) {
       frontend_source_url: form.frontend_source_url.trim(),
       backend_source_url: form.backend_source_url.trim(),
     };
+
+    const requiredTimelineFields = STATUS_TIMELINE_FIELDS[form.status].map(({ name }) => name);
+    for (const field of ["start_date", "end_date", "last_updated", "expected_start_date"]) {
+      payload[field] = requiredTimelineFields.includes(field) ? form[field] : null;
+    }
 
     for (const field of ["live_url", "github_url", "frontend_source_url", "backend_source_url"]) {
       if (!payload[field]) {
@@ -192,9 +248,28 @@ function ProjectForm({ initialProject, busy, onCancel, onSubmit }) {
     <form onSubmit={submit} className="solid-panel max-w-3xl rounded-3xl p-6 sm:p-8">
       <div className="grid gap-5 sm:grid-cols-2">
         <FormField label="Project title" name="title" placeholder="e.g. E-commerce API" value={form.title} onChange={update} required />
-        <FormField label="Category" name="category" placeholder="frontend, backend, or full_stack" value={form.category} onChange={update} required />
-        <FormField label="Status" name="status" placeholder="e.g. in_progress or completed" value={form.status} onChange={update} required />
+        <label className="block">
+          <span className="field-label">Category</span>
+          <select className="field-input" name="category" value={form.category} onChange={update} required>
+            {categoryOptions.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
+          </select>
+        </label>
+        <label className="block">
+          <span className="field-label">Status</span>
+          <select className="field-input" name="status" value={form.status} onChange={update} required>
+            {PROJECT_STATUSES.map(({ value, label }) => <option key={value} value={value}>{label}</option>)}
+          </select>
+        </label>
         <FormField label="Priority" name="priority" type="number" step="1" value={form.priority} onChange={update} required />
+        {STATUS_TIMELINE_FIELDS[form.status].map(({ name, label }) => (
+          <FormField key={name} label={label} name={name} type="date" value={form[name]} onChange={update} required />
+        ))}
+        <p className="text-xs text-secondary-light dark:text-secondary-dark sm:col-span-2">
+          {form.status === "completed" && "Completed projects need start and end dates."}
+          {form.status === "in_progress" && "In-progress timelines run from the start date through Present."}
+          {form.status === "on_hold" && "On-hold projects need a start date and the date they were last updated."}
+          {form.status === "planned" && "Planned projects need an expected start date."}
+        </p>
         <FormField label="Live URL" name="live_url" type="url" placeholder="https://yourproject.com" value={form.live_url} onChange={update} />
         <FormField label="GitHub URL (legacy)" name="github_url" type="url" placeholder="https://github.com/username/repo" value={form.github_url} onChange={update} />
         <FormField label="Frontend source URL" name="frontend_source_url" type="url" placeholder="https://github.com/username/frontend" value={form.frontend_source_url} onChange={update} />
@@ -245,12 +320,12 @@ export default function Admin() {
   const [images, setImages] = useState([]);
   const [technologyName, setTechnologyName] = useState("");
   const [imageFile, setImageFile] = useState(null);
+  const [resumeFile, setResumeFile] = useState(null);
   const [imageUpdateFiles, setImageUpdateFiles] = useState({});
   const imageInput = useRef(null);
+  const resumeInput = useRef(null);
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
 
   const logout = useCallback(({ expired = false } = {}) => {
     localStorage.removeItem(TOKEN_KEY);
@@ -261,11 +336,7 @@ export default function Admin() {
     setPage("dashboard");
     setCredentials({ username: "", password: "" });
     if (expired) {
-      setError("Your session has expired. Please sign in again.");
-      setNotice("");
-    } else {
-      setError("");
-      setNotice("");
+      toast.error("Your session has expired. Please sign in again.");
     }
   }, []);
 
@@ -284,7 +355,7 @@ export default function Admin() {
         if (active) setSetupRequired(Boolean(data?.setup_required));
       })
       .catch((cause) => {
-        if (active) setError(`Could not check admin setup status. ${cause.message}`);
+        if (active) toast.error(`Could not check admin setup status. ${cause.message}`);
       })
       .finally(() => {
         if (active) setSetupStatusLoading(false);
@@ -322,7 +393,6 @@ export default function Admin() {
 
   const loadProjects = async (accessToken = token) => {
     setLoading(true);
-    setError("");
     try {
       const data = await request("/projects/all", { token: accessToken });
       setProjects(getItems(data));
@@ -331,7 +401,7 @@ export default function Admin() {
         setProjects([]);
         return;
       }
-      setError(`Could not load projects. ${cause.message}`);
+      toast.error(`Could not load projects. ${cause.message}`);
     } finally {
       setLoading(false);
     }
@@ -344,7 +414,6 @@ export default function Admin() {
   const openProject = async (project, tab = "overview") => {
     setSelectedProject(project);
     setDetailTab(tab);
-    setError("");
     setPage("details");
     const id = getId(project);
     try {
@@ -356,7 +425,7 @@ export default function Admin() {
       setTechnologies(getItems(details?.technologies));
       setImages(getItems(imageData));
     } catch (cause) {
-      setError(`Could not load project details. ${cause.message}`);
+      toast.error(`Could not load project details. ${cause.message}`);
     }
   };
 
@@ -388,8 +457,6 @@ export default function Admin() {
   const login = async (event) => {
     event.preventDefault();
     setLoginBusy(true);
-    setError("");
-    setNotice("");
     try {
       const payload = {
         username: credentials.username.trim(),
@@ -400,9 +467,9 @@ export default function Admin() {
       }
       const data = await request("/auth/login", { method: "POST", body: payload });
       resolveAccessToken(data);
-      setNotice("Signed in successfully.");
+      toast.success("Signed in successfully.");
     } catch (cause) {
-      setError(`Could not sign in. ${cause.message}`);
+      toast.error(`Could not sign in. ${cause.message}`);
     } finally {
       setLoginBusy(false);
     }
@@ -411,8 +478,6 @@ export default function Admin() {
   const createFirstAdmin = async (event) => {
     event.preventDefault();
     setLoginBusy(true);
-    setError("");
-    setNotice("");
     try {
       const payload = {
         username: credentials.username.trim(),
@@ -423,9 +488,9 @@ export default function Admin() {
       }
       const data = await request("/auth/register", { method: "POST", body: payload });
       resolveAccessToken(data);
-      setNotice("Admin account created successfully.");
+      toast.success("Admin account created successfully.");
     } catch (cause) {
-      setError(`Could not create the admin account. ${cause.message}`);
+      toast.error(`Could not create the admin account. ${cause.message}`);
     } finally {
       setLoginBusy(false);
     }
@@ -433,19 +498,18 @@ export default function Admin() {
 
   const saveProject = async (form) => {
     setBusy(true);
-    setError("");
     try {
       if (page === "edit") {
         await request(`/projects/${getId(selectedProject)}`, { method: "PATCH", token, body: form });
-        setNotice("Project updated successfully.");
+        toast.success("Project updated successfully.");
       } else {
         await request("/projects", { method: "POST", token, body: form });
-        setNotice("Project created successfully.");
+        toast.success("Project created successfully.");
       }
       await loadProjects();
       setPage("projects");
     } catch (cause) {
-      setError(`Could not ${page === "edit" ? "update" : "create"} project. ${cause.message}`);
+      toast.error(`Could not ${page === "edit" ? "update" : "create"} project. ${cause.message}`);
     } finally {
       setBusy(false);
     }
@@ -455,12 +519,12 @@ export default function Admin() {
     if (!window.confirm("Are you sure you want to continue?")) return;
     try {
       await request(`/projects/${getId(project)}`, { method: "DELETE", token });
-      setNotice("Project deleted.");
+      toast.success("Project deleted.");
       setSelectedProject(null);
       setPage("projects");
       await loadProjects();
     } catch (cause) {
-      setError(`Could not delete project. ${cause.message}`);
+      toast.error(`Could not delete project. ${cause.message}`);
     }
   };
 
@@ -481,9 +545,9 @@ export default function Admin() {
         ? { ...project, ...updatedProject, technologies: savedTechnologies }
         : project));
       setTechnologyName("");
-      setNotice("Technology added.");
+      toast.success("Technology added.");
     } catch (cause) {
-      setError(`Could not add technology. ${cause.message}`);
+      toast.error(`Could not add technology. ${cause.message}`);
     } finally {
       setBusy(false);
     }
@@ -493,11 +557,11 @@ export default function Admin() {
     event.preventDefault();
     if (!imageFile) return;
     if (!["image/png", "image/jpeg", "image/webp", "image/gif"].includes(imageFile.type)) {
-      setError("Choose a PNG, JPG, WEBP, or GIF image.");
+      toast.error("Choose a PNG, JPG, WEBP, or GIF image.");
       return;
     }
     if (imageFile.size > 5 * 1024 * 1024) {
-      setError("Image must be no larger than 5 MB.");
+      toast.error("Image must be no larger than 5 MB.");
       return;
     }
     const payload = new FormData();
@@ -509,9 +573,37 @@ export default function Admin() {
       setImages(getItems(result));
       setImageFile(null);
       if (imageInput.current) imageInput.current.value = "";
-      setNotice("Image uploaded successfully.");
+      toast.success("Image uploaded successfully.");
     } catch (cause) {
-      setError(`Could not upload image. ${cause.message}`);
+      toast.error(`Could not upload image. ${cause.message}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const uploadResume = async (event) => {
+    event.preventDefault();
+    if (!resumeFile) return;
+    if (!resumeFile.name.toLowerCase().endsWith(".pdf")
+      || (resumeFile.type && resumeFile.type !== "application/pdf")) {
+      toast.error("Choose a PDF resume.");
+      return;
+    }
+    if (resumeFile.size === 0 || resumeFile.size > 10 * 1024 * 1024) {
+      toast.error("Resume must be larger than 0 bytes and no larger than 10 MB.");
+      return;
+    }
+
+    const payload = new FormData();
+    payload.append("file", resumeFile);
+    setBusy(true);
+    try {
+      await request("/resume", { method: "POST", token, body: payload });
+      setResumeFile(null);
+      if (resumeInput.current) resumeInput.current.value = "";
+      toast.success("Resume uploaded successfully.");
+    } catch (cause) {
+      toast.error(`Could not upload resume. ${cause.message}`);
     } finally {
       setBusy(false);
     }
@@ -523,18 +615,17 @@ export default function Admin() {
     const file = imageUpdateFiles[imageId];
     if (!file) return;
     if (!["image/png", "image/jpeg", "image/webp", "image/gif"].includes(file.type)) {
-      setError("Choose a PNG, JPG, WEBP, or GIF image.");
+      toast.error("Choose a PNG, JPG, WEBP, or GIF image.");
       return;
     }
     if (file.size > 5 * 1024 * 1024) {
-      setError("Image must be no larger than 5 MB.");
+      toast.error("Image must be no larger than 5 MB.");
       return;
     }
 
     const payload = new FormData();
     payload.append("file", file);
     setBusy(true);
-    setError("");
     try {
       await request(`/projects/${getId(selectedProject)}/images/${imageId}`, {
         method: "PUT", token, body: payload,
@@ -547,9 +638,9 @@ export default function Admin() {
         ? { ...project, images: updatedImages }
         : project));
       setImageUpdateFiles((current) => ({ ...current, [imageId]: null }));
-      setNotice("Project image updated.");
+      toast.success("Project image updated.");
     } catch (cause) {
-      setError(`Could not update image. ${cause.message}`);
+      toast.error(`Could not update image. ${cause.message}`);
     } finally {
       setBusy(false);
     }
@@ -558,9 +649,8 @@ export default function Admin() {
   const deleteImage = async (image) => {
     const imageId = image.id ?? image.image_id;
     if (imageId == null || !window.confirm("Delete this project image?")) return;
-
     setBusy(true);
-    setError("");
+    setBusy(true);
     try {
       await request(`/projects/${getId(selectedProject)}/images/${imageId}`, {
         method: "DELETE", token,
@@ -571,17 +661,15 @@ export default function Admin() {
       setProjects((current) => current.map((project) => getId(project) === getId(selectedProject)
         ? { ...project, images: updatedImages }
         : project));
-      setNotice("Project image deleted.");
+      toast.success("Project image deleted.");
     } catch (cause) {
-      setError(`Could not delete image. ${cause.message}`);
+      toast.error(`Could not delete image. ${cause.message}`);
     } finally {
       setBusy(false);
     }
   };
 
   const go = (destination) => {
-    setError("");
-    setNotice("");
     setPage(destination);
     if (destination !== "details") setSelectedProject(null);
   };
@@ -625,8 +713,6 @@ export default function Admin() {
                     required
                   />
                 </div>
-                {error && <p role="alert" className="mt-4 text-sm text-red-600 dark:text-red-400">{error}</p>}
-                {notice && <p role="status" className="mt-4 text-sm text-green-700 dark:text-green-400">{notice}</p>}
                 <button className="btn-primary mt-6 w-full" disabled={loginBusy}>
                   {loginBusy
                     ? (setupRequired ? "Creating account…" : "Signing in…")
@@ -655,7 +741,7 @@ export default function Admin() {
 
   return (
     <div className="min-h-screen md:flex">
-      <aside className="glass-panel flex shrink-0 flex-col border-b p-4 md:min-h-screen md:w-64 md:border-b-0 md:border-r md:p-6">
+      <aside className="glass-panel flex shrink-0 flex-col border-b p-4 md:fixed md:inset-y-0 md:left-0 md:z-30 md:h-screen md:min-h-screen md:w-64 md:overflow-y-auto md:border-b-0 md:border-r md:p-6">
         <a href="/" className="brand-shell mb-5 flex items-center gap-3 md:mb-10">
           <BrandMark className="brand-mark" />
           <BrandText compact />
@@ -670,7 +756,7 @@ export default function Admin() {
         <a href="/" className="mt-auto hidden items-center gap-3 rounded-xl px-3 py-3 text-sm font-medium text-secondary-light hover:bg-black/5 dark:text-secondary-dark dark:hover:bg-white/5 md:flex"><FiArrowLeft />Back to Site</a>
       </aside>
 
-      <div className="min-w-0 flex-1">
+      <div className="min-w-0 flex-1 md:ml-64">
         <header className="glass-panel sticky top-0 z-20 flex items-center justify-between rounded-none border-x-0 border-t-0 px-5 py-4 sm:px-8">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-accent-light dark:text-accent-dark">Admin Panel</p>
@@ -683,9 +769,6 @@ export default function Admin() {
         </header>
 
         <main className="mx-auto max-w-6xl px-5 py-8 sm:px-8 sm:py-10">
-          {error && <div role="alert" className="mb-5 flex items-start justify-between gap-4 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-sm text-red-700 dark:text-red-300"><span>{error}</span><button aria-label="Dismiss error" onClick={() => setError("")}><FiX /></button></div>}
-          {notice && <div role="status" className="mb-5 flex items-center justify-between gap-4 rounded-2xl border border-green-500/20 bg-green-500/10 px-4 py-3 text-sm text-green-700 dark:text-green-300"><span>{notice}</span><button aria-label="Dismiss message" onClick={() => setNotice("")}><FiX /></button></div>}
-
           {page === "dashboard" && <>
             <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
               <div><span className="eyebrow">Overview</span><h1 className="text-3xl sm:text-4xl">Welcome back, Shuvo 👋</h1><p className="mt-2 text-sm text-secondary-light dark:text-secondary-dark">Manage your portfolio projects, technologies, and images from one place.</p></div>
@@ -708,7 +791,7 @@ export default function Admin() {
           {page === "projects" && <>
             <div className="mb-7 flex flex-wrap items-end justify-between gap-4"><div><span className="eyebrow">Portfolio manager</span><h1 className="text-3xl">Projects</h1><p className="mt-2 text-sm text-secondary-light dark:text-secondary-dark">All projects shown on your portfolio.</p></div><button className="btn-primary" onClick={() => go("create")}><FiPlus /> Create Project</button></div>
             <div className="solid-panel overflow-hidden rounded-3xl">
-              {projects.length ? <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left text-sm"><thead className="border-b border-black/[0.07] bg-black/[0.02] text-xs uppercase tracking-wide text-secondary-light dark:border-white/[0.09] dark:bg-white/[0.02] dark:text-secondary-dark"><tr>{["ID", "Title", "Category", "Technologies", "Images", "Status", "Priority", "Actions"].map((heading) => <th className="px-5 py-4 font-semibold" key={heading}>{heading}</th>)}</tr></thead><tbody>{projects.map((project) => <tr key={getId(project)} className="border-b border-black/[0.05] last:border-0 dark:border-white/[0.06]"><td className="px-5 py-4 font-mono text-xs">{getId(project)}</td><td className="max-w-56 px-5 py-4 font-semibold">{getTitle(project)}</td><td className="px-5 py-4 capitalize">{project.category || "—"}</td><td className="px-5 py-4">{project.technologies?.length ?? "—"}</td><td className="px-5 py-4">{project.images?.length ?? "—"}</td><td className="px-5 py-4"><span className="tag">{project.status || "—"}{project.featured ? " · Featured" : ""}</span></td><td className="px-5 py-4">{project.priority ?? 0}</td><td className="px-5 py-4"><div className="flex gap-3"><button className="font-semibold text-accent-light dark:text-accent-dark" onClick={() => openProject(project)}>View</button><button className="font-semibold text-accent-light dark:text-accent-dark" onClick={() => openProject(project, "technologies")}>Add Tech</button><button className="font-semibold text-accent-light dark:text-accent-dark" onClick={() => openProject(project, "images")}>Upload Image</button></div></td></tr>)}</tbody></table></div> : <div className="p-8"><EmptyState loading={loading} text="No projects yet. Create your first project to showcase your work." action={() => go("create")} /></div>}
+              {projects.length ? <div className="overflow-x-auto"><table className="w-full min-w-[760px] text-left text-sm"><thead className="border-b border-black/[0.07] bg-black/[0.02] text-xs uppercase tracking-wide text-secondary-light dark:border-white/[0.09] dark:bg-white/[0.02] dark:text-secondary-dark"><tr>{["ID", "Title", "Category", "Technologies", "Images", "Status", "Priority", "Actions"].map((heading) => <th className="px-5 py-4 font-semibold" key={heading}>{heading}</th>)}</tr></thead><tbody>{projects.map((project) => <tr key={getId(project)} className="border-b border-black/[0.05] last:border-0 dark:border-white/[0.06]"><td className="px-5 py-4 font-mono text-xs">{getId(project)}</td><td className="max-w-56 px-5 py-4 font-semibold">{getTitle(project)}</td><td className="px-5 py-4 capitalize">{project.category || "—"}</td><td className="px-5 py-4">{project.technologies?.length ?? "—"}</td><td className="px-5 py-4">{project.images?.length ?? "—"}</td><td className="px-5 py-4"><span className="tag">{getProjectStatusLabel(project.status)}{project.featured ? " · Featured" : ""}</span></td><td className="px-5 py-4">{project.priority ?? 0}</td><td className="px-5 py-4"><div className="flex gap-3"><button className="font-semibold text-accent-light dark:text-accent-dark" onClick={() => openProject(project)}>View</button><button className="font-semibold text-accent-light dark:text-accent-dark" onClick={() => openProject(project, "technologies")}>Add Tech</button><button className="font-semibold text-accent-light dark:text-accent-dark" onClick={() => openProject(project, "images")}>Upload Image</button></div></td></tr>)}</tbody></table></div> : <div className="p-8"><EmptyState loading={loading} text="No projects yet. Create your first project to showcase your work." action={() => go("create")} /></div>}
             </div>
           </>}
 
@@ -718,14 +801,14 @@ export default function Admin() {
           </>}
 
           {page === "details" && selectedProject && <>
-            <div className="mb-7 flex flex-wrap items-start justify-between gap-4"><div><button className="mb-4 inline-flex items-center gap-2 text-sm text-secondary-light hover:text-primary-light dark:text-secondary-dark dark:hover:text-primary-dark" onClick={() => go("projects")}><FiArrowLeft /> Projects</button><span className="eyebrow">Project details</span><h1 className="text-3xl">{getTitle(selectedProject)}</h1></div><div className="flex gap-2"><button className="btn-ghost btn-sm" onClick={() => { setPage("edit"); setError(""); }}><FiSettings /> Edit</button><button className="btn-ghost btn-sm text-red-600 dark:text-red-400" onClick={() => removeProject(selectedProject)}><FiTrash2 /> Delete</button></div></div>
+            <div className="mb-7 flex flex-wrap items-start justify-between gap-4"><div><button className="mb-4 inline-flex items-center gap-2 text-sm text-secondary-light hover:text-primary-light dark:text-secondary-dark dark:hover:text-primary-dark" onClick={() => go("projects")}><FiArrowLeft /> Projects</button><span className="eyebrow">Project details</span><h1 className="text-3xl">{getTitle(selectedProject)}</h1></div><div className="flex gap-2"><button className="btn-ghost btn-sm" onClick={() => setPage("edit")}><FiSettings /> Edit</button><button className="btn-ghost btn-sm text-red-600 dark:text-red-400" onClick={() => removeProject(selectedProject)}><FiTrash2 /> Delete</button></div></div>
             <div className="mb-6 flex gap-2 border-b border-black/[0.07] dark:border-white/[0.09]">{["overview", "technologies", "images"].map((tab) => <button key={tab} onClick={() => setDetailTab(tab)} className={`border-b-2 px-4 py-3 text-sm font-semibold capitalize ${detailTab === tab ? "border-accent-light text-accent-light dark:border-accent-dark dark:text-accent-dark" : "border-transparent text-secondary-light dark:text-secondary-dark"}`}>{tab}</button>)}</div>
             {detailTab === "overview" && <div className="solid-panel rounded-3xl p-6 sm:p-8"><h2 className="mb-3 text-xl">Overview</h2><p className="mb-6 whitespace-pre-wrap text-sm leading-7 text-secondary-light dark:text-secondary-dark">{getDescription(selectedProject) || "No description provided."}</p><dl className="mb-6 grid gap-4 text-sm sm:grid-cols-3"><div><dt className="text-secondary-light dark:text-secondary-dark">Category</dt><dd className="mt-1 font-medium capitalize">{selectedProject.category || "—"}</dd></div><div><dt className="text-secondary-light dark:text-secondary-dark">Status</dt><dd className="mt-1 font-medium">{selectedProject.status || "—"}</dd></div><div><dt className="text-secondary-light dark:text-secondary-dark">Priority</dt><dd className="mt-1 font-medium">{selectedProject.priority ?? 0}</dd></div></dl><div className="flex flex-wrap gap-3">{selectedProject.live_url && <a className="btn-ghost btn-sm" href={selectedProject.live_url} target="_blank" rel="noreferrer">Live project <FiExternalLink /></a>}{(selectedProject.frontend_source_url || selectedProject.github_url) && <a className="btn-ghost btn-sm" href={selectedProject.frontend_source_url || selectedProject.github_url} target="_blank" rel="noreferrer">Frontend source <FiExternalLink /></a>}{selectedProject.backend_source_url && <a className="btn-ghost btn-sm" href={selectedProject.backend_source_url} target="_blank" rel="noreferrer">Backend source <FiExternalLink /></a>}</div>{selectedProject.features?.length > 0 && <section className="mt-7 border-t border-black/[0.07] pt-6 dark:border-white/[0.09]"><h3 className="mb-4 text-lg font-semibold">Features</h3><div className="grid gap-3 sm:grid-cols-2">{getFeatureList(selectedProject.features).map((feature, index) => <article className="rounded-2xl bg-black/[0.03] p-4 dark:bg-white/[0.04]" key={`${feature.title}-${index}`}><h4 className="font-semibold">{feature.title}</h4>{feature.description && <p className="mt-1 text-sm text-secondary-light dark:text-secondary-dark">{feature.description}</p>}</article>)}</div></section>}<p className="mt-6 text-xs text-secondary-light dark:text-secondary-dark">Created {selectedProject.created_at ? new Date(selectedProject.created_at).toLocaleDateString() : "date unavailable"}</p></div>}
             {detailTab === "technologies" && <div className="solid-panel rounded-3xl p-6 sm:p-8"><h2 className="text-xl">Technologies</h2><p className="mb-5 mt-1 text-sm text-secondary-light dark:text-secondary-dark">Tools and frameworks used in this project.</p><form onSubmit={addTechnology} className="mb-7 flex flex-wrap gap-3"><input className="field-input max-w-sm flex-1" aria-label="Technology name" placeholder="e.g. FastAPI, React, PostgreSQL" value={technologyName} onChange={(event) => setTechnologyName(event.target.value)} required /><button className="btn-primary" disabled={busy}><FiPlus /> Add Technology</button></form>{technologies.length ? <div className="flex flex-wrap gap-2">{technologies.map((technology, index) => <span className="tag" key={technology.id ?? getTechnologyName(technology) ?? index}>{getTechnologyName(technology)}</span>)}</div> : <EmptyState text="No technologies added yet." />}</div>}
             {detailTab === "images" && <div className="solid-panel rounded-3xl p-6 sm:p-8"><h2 className="text-xl">Project Images</h2><p className="mb-5 mt-1 text-sm text-secondary-light dark:text-secondary-dark">Upload, replace, or delete screenshots (JPG, PNG, WEBP, or GIF; max 5 MB).</p><form onSubmit={uploadImage} className="mb-7 flex flex-wrap items-center gap-3"><input ref={imageInput} className="field-input max-w-sm flex-1" type="file" accept="image/png,image/jpeg,image/webp,image/gif" onChange={(event) => setImageFile(event.target.files?.[0] || null)} required /><button className="btn-primary" disabled={busy}><FiUpload /> Upload Image</button></form>{images.length ? <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">{images.map((image, index) => { const url = getImageUrl(image); const imageId = image.id ?? image.image_id; return <article key={imageId ?? url ?? index} className="overflow-hidden rounded-2xl border border-black/[0.07] dark:border-white/[0.09]"><a href={url} target="_blank" rel="noreferrer" className="group block"><img className="aspect-square w-full object-cover transition-transform group-hover:scale-105" src={url} alt={image.alt || `${getTitle(selectedProject)} preview ${index + 1}`} /></a>{imageId != null && <div className="space-y-2 p-3"><form onSubmit={(event) => updateImage(event, image)} className="space-y-2"><input className="field-input text-xs" type="file" accept="image/png,image/jpeg,image/webp,image/gif" aria-label={`Choose replacement for image ${imageId}`} onChange={(event) => setImageUpdateFiles((current) => ({ ...current, [imageId]: event.target.files?.[0] || null }))} required /><button className="btn-ghost btn-sm w-full justify-center" type="submit" disabled={busy || !imageUpdateFiles[imageId]}>Replace Image</button></form><button className="btn-ghost btn-sm w-full justify-center text-red-600 dark:text-red-400" type="button" onClick={() => deleteImage(image)} disabled={busy}><FiTrash2 /> Delete Image</button></div>}</article>; })}</div> : <EmptyState text="No images uploaded yet." />}</div>}
           </>}
 
-          {page === "settings" && <div className="solid-panel max-w-3xl rounded-3xl p-6 sm:p-8"><span className="eyebrow">Profile</span><h1 className="mb-2 text-3xl">Settings</h1><p className="mb-6 text-sm text-secondary-light dark:text-secondary-dark">Portfolio profile settings are managed in the site source. Use the resume link below to verify the public download.</p><p className="font-semibold">Shakhawat Hossain Shuvo</p><p className="mb-5 text-sm text-secondary-light dark:text-secondary-dark">Full Stack Developer</p><a className="btn-ghost btn-sm" href="/resume.pdf" download>Download Resume <FiExternalLink /></a></div>}
+          {page === "settings" && <div className="solid-panel max-w-3xl rounded-3xl p-6 sm:p-8"><span className="eyebrow">Profile</span><h1 className="mb-2 text-3xl">Settings</h1><p className="mb-6 text-sm text-secondary-light dark:text-secondary-dark">Update the resume PDF served on your public portfolio. Uploading a new file replaces the current resume.</p><p className="font-semibold">Shakhawat Hossain Shuvo</p><p className="mb-6 text-sm text-secondary-light dark:text-secondary-dark">Full Stack Developer</p><section className="border-t border-black/[0.07] pt-6 dark:border-white/[0.09]"><h2 className="mb-2 text-lg font-semibold">Resume PDF</h2><p className="mb-4 text-sm text-secondary-light dark:text-secondary-dark">Choose a PDF file up to 10 MB. The uploaded file becomes available to visitors immediately.</p><form onSubmit={uploadResume} className="mb-5 flex flex-wrap items-center gap-3"><input ref={resumeInput} className="field-input max-w-sm flex-1" type="file" accept="application/pdf,.pdf" aria-label="Choose resume PDF" onChange={(event) => setResumeFile(event.target.files?.[0] || null)} required /><button className="btn-primary" disabled={busy || !resumeFile}><FiUpload /> {busy ? "Uploading…" : "Upload / Replace Resume"}</button></form><a className="btn-ghost btn-sm" href={`${API_BASE}/resume`}><FiDownload /> Download Current Resume</a></section></div>}
         </main>
         <footer className="px-5 pb-7 text-center text-xs text-secondary-light dark:text-secondary-dark">© 2026 Shakhawat Hossain Shuvo. Admin Panel</footer>
       </div>

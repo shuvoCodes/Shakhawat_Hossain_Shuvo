@@ -20,8 +20,13 @@ const ProjectCard = ({ project, onClick }) => (
         )}
         <span className="status-pill">
             <span className="fc-dot" />
-            {project.status}
+            {project.statusLabel}
         </span>
+        {project.timelineLabel && (
+            <span className="mb-2 block text-xs text-secondary-light dark:text-secondary-dark">
+                {project.timelineLabel}
+            </span>
+        )}
         <span className="mb-2 block text-lg font-semibold leading-snug">
             {project.title}
         </span>

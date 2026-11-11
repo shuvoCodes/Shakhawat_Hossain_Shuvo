@@ -1,6 +1,48 @@
 import API_BASE_URL from "../Base/baseUrl";
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL || API_BASE_URL || "http://localhost:8000").replace(/\/$/, "");
+const API_BASE = API_BASE_URL;
+const PROJECT_STATUS_LABELS = {
+    completed: "Completed",
+    in_progress: "In Progress",
+    on_hold: "On Hold",
+    planned: "Planned",
+};
+
+const normalizeStatus = (status) =>
+    String(status || "").trim().toLowerCase().replace(/[\s-]+/g, "_");
+
+const formatTimelineDate = (value) => {
+    if (!value) return "";
+    const date = new Date(`${String(value).slice(0, 10)}T12:00:00Z`);
+    if (Number.isNaN(date.getTime())) return "";
+    return new Intl.DateTimeFormat(undefined, {
+        day: "numeric",
+        month: "short",
+        timeZone: "UTC",
+        year: "numeric",
+    }).format(date);
+};
+
+const getTimelineLabel = (project, status) => {
+    const startDate = formatTimelineDate(project?.start_date);
+    const endDate = formatTimelineDate(project?.end_date);
+    const lastUpdated = formatTimelineDate(project?.last_updated);
+    const expectedStartDate = formatTimelineDate(project?.expected_start_date);
+
+    if (status === "completed" && startDate && endDate) {
+        return `${startDate} – ${endDate}`;
+    }
+    if (status === "in_progress" && startDate) {
+        return `${startDate} – Present`;
+    }
+    if (status === "on_hold" && startDate && lastUpdated) {
+        return `${startDate} – Last updated ${lastUpdated}`;
+    }
+    if (status === "planned" && expectedStartDate) {
+        return `Expected start ${expectedStartDate}`;
+    }
+    return "";
+};
 
 const getItems = (data) => {
     if (Array.isArray(data)) return data;
@@ -66,6 +108,7 @@ const normalizeCategories = (project, technologies) => {
 
     if (/front|client|mobile|android|ios/.test(explicitCategory)) categories.add("frontend");
     if (/back|server|api/.test(explicitCategory)) categories.add("backend");
+    if (/^app$/.test(explicitCategory)) categories.add("app");
     if (/full[\s_-]?stack/.test(explicitCategory)) {
         categories.add("frontend");
         categories.add("backend");
@@ -117,8 +160,14 @@ export function normalizeProject(project) {
     const image = getImageUrl(project?.image || images[0]);
     const categories = normalizeCategories(project || {}, technologies);
     const categoryLabel = categories
-        .map((category) => category === "frontend" ? "Frontend" : "Backend")
+        .map((category) => ({
+            frontend: "Frontend",
+            backend: "Backend",
+            app: "App",
+        }[category]))
         .join(" · ");
+    const status = project?.status || (project?.featured ? "Featured" : "Project");
+    const normalizedStatus = normalizeStatus(status);
 
     return {
         ...project,
@@ -128,7 +177,9 @@ export function normalizeProject(project) {
         details: project?.details || project?.long_description || project?.description || project?.short_description || "",
         category: categories,
         categoryLabel: categoryLabel || "Project",
-        status: project?.status || (project?.featured ? "Featured" : "Project"),
+        status,
+        statusLabel: PROJECT_STATUS_LABELS[normalizedStatus] || status,
+        timelineLabel: getTimelineLabel(project, normalizedStatus),
         image,
         imageAlt: project?.title || project?.name || "Project preview",
         technologies,

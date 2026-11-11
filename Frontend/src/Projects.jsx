@@ -3,12 +3,14 @@ import Footer from "./Components/Footer";
 import Navbar from "./Components/Navbar";
 import ProjectCard from "./Section/ProjectCard";
 import ProjectDetails from "./Section/ProjectDetails";
+import ProjectLoadingSkeleton from "./Section/ProjectLoadingSkeleton";
 import useProjects from "./Section/useProjects";
 
 const filters = [
     { id: "all", label: "All" },
     { id: "frontend", label: "Frontend" },
     { id: "backend", label: "Backend" },
+    { id: "app", label: "App" },
 ];
 
 const Projects = () => {
@@ -32,44 +34,35 @@ const Projects = () => {
         <>
             <Navbar />
             <main className="min-h-[70vh] px-8 py-16">
-                <section className="mx-auto max-w-[1180px]" aria-labelledby="projects-heading">
+                <section className="relative mx-auto max-w-[1180px]" aria-labelledby="projects-heading">
+                    <div className="absolute right-0 top-0  mb-6 flex flex-wrap gap-2" role="group" aria-label="Filter projects by category">
+                        {filters.map((filter) => (
+                            <button
+                                key={filter.id}
+                                type="button"
+                                className={
+                                    activeFilter === filter.id
+                                        ? "btn-primary btn-sm"
+                                        : "btn-ghost btn-sm"
+                                }
+                                onClick={() => setActiveFilter(filter.id)}
+                                aria-pressed={activeFilter === filter.id}
+                            >
+                                {filter.label}
+                            </button>
+                        ))}
+                    </div>
                     <span className="eyebrow">Project archive</span>
-                    <div className="mb-8 flex flex-wrap items-end justify-between gap-5">
+                    <div className="mb-8">
                         <div>
                             <h1 id="projects-heading" className="text-[clamp(30px,4vw,44px)]">
                                 All Projects
                             </h1>
-                            <p className="mt-2 text-sm text-secondary-light dark:text-secondary-dark">
-                                Browse the work by project type.
-                            </p>
-                        </div>
-                        <div
-                            className="flex flex-wrap gap-2"
-                            role="group"
-                            aria-label="Filter projects"
-                        >
-                            {filters.map((filter) => (
-                                <button
-                                    key={filter.id}
-                                    type="button"
-                                    className={
-                                        activeFilter === filter.id
-                                            ? "btn-primary btn-sm"
-                                            : "btn-ghost btn-sm"
-                                    }
-                                    onClick={() => setActiveFilter(filter.id)}
-                                    aria-pressed={activeFilter === filter.id}
-                                >
-                                    {filter.label}
-                                </button>
-                            ))}
                         </div>
                     </div>
 
                     {loading && (
-                        <p role="status" className="text-sm text-secondary-light dark:text-secondary-dark">
-                            Loading projects…
-                        </p>
+                        <ProjectLoadingSkeleton label="Loading projects" />
                     )}
                     {error && (
                         <div className="flex flex-wrap items-center gap-3 text-sm text-red-600 dark:text-red-400">
@@ -78,7 +71,7 @@ const Projects = () => {
                         </div>
                     )}
                     {!loading && !error && !visibleProjects.length && (
-                        <p className="text-sm text-secondary-light dark:text-secondary-dark">
+                        <p className="text-sm m-auto text-center text-secondary-light dark:text-secondary-dark">
                             No projects found in this category.
                         </p>
                     )}

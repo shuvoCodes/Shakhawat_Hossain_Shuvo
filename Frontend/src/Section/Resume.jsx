@@ -1,4 +1,5 @@
 import React from 'react';
+import API_BASE_URL from '../Base/baseUrl';
 
 const Resume = () => {
     return (
@@ -20,7 +21,7 @@ const Resume = () => {
                         </p>
                         <div className="flex flex-wrap gap-3">
                             <a
-                                href="/resume.pdf"
+                                href={`${API_BASE_URL}/resume`}
                                 download="Shakhawat-Hossain-Shuvo-Resume.pdf"
                                 className="btn-primary"
                             >

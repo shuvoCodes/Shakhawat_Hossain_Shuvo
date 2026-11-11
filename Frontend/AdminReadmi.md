@@ -54,8 +54,9 @@ The admin page includes project management only; workshop management is not show
 |---|---|---|
 | Project Title | Text | e.g. E-commerce API |
 | Short Description | Textarea | A brief summary of what the project does |
-| Category | Text | frontend, backend, or full_stack |
-| Status | Text | e.g. in_progress or completed |
+| Category | Select | Frontend, Backend, Full Stack, or App |
+| Status | Select | Completed, In Progress, On Hold, or Planned |
+| Timeline dates | Date | Required dates depend on status (see below) |
 | Priority | Number | 0 |
 | Live URL | URL | https://yourproject.com |
 | GitHub URL | URL | https://github.com/username/repo |
@@ -64,10 +65,18 @@ The admin page includes project management only; workshop management is not show
 | Features | Repeatable title and description fields | e.g. Parcel tracking |
 
 **Buttons:** Create Project · Cancel
-**Success message:** "Project created successfully."
-**Error message:** "Could not create project. Please check the fields and try again."
+Success and error notifications appear as toast messages.
 
-Create and edit requests send `category`, `status`, `featured`, `priority`, `features` (objects with `title` and `description`) and `technologies` (string array) in the project JSON body. Images are managed separately through the upload endpoint.
+Create and edit requests send `category`, `status`, `featured`, `priority`, timeline dates, `features` (objects with `title` and `description`) and `technologies` (string array) in the project JSON body. Images are managed separately through the upload endpoint. Dates use `YYYY-MM-DD`:
+
+| Status | Required timeline dates |
+|---|---|
+| Completed | Start date and end date |
+| In Progress | Start date; the timeline ends at Present |
+| On Hold | Start date and last updated |
+| Planned | Expected start date |
+
+The portfolio displays this timeline on project cards and in project details.
 
 ---
 
@@ -115,7 +124,7 @@ Use `DELETE /projects/{project_id}/images/{image_id}` to remove an image after c
 - Display name: Shakhawat Hossain Shuvo
 - Title: Full Stack Developer
 - Availability toggle: "Open to work" (Full-time · Freelance · Collabs)
-- Resume upload: Download Resume file
+- Resume management: Upload or replace the resume PDF (admin token required; maximum 10 MB) and download the current resume through the public endpoint.
 - Change password
 
 ---
@@ -144,5 +153,7 @@ Use `DELETE /projects/{project_id}/images/{image_id}` to remove an image after c
 | GET | `/projects/{project_id}/images` | Get Project Images |
 | PUT | `/projects/{project_id}/images/{image_id}` | Replace Project Image |
 | DELETE | `/projects/{project_id}/images/{image_id}` | Delete Project Image |
+| POST | `/resume` | Upload or replace the resume PDF (admin) |
+| GET | `/resume` | Download the current resume PDF |
 
 Admin registration is limited to one account per database. On a new empty database, create the first admin with `POST /auth/register`. Additional registrations are rejected, and any later sign-in uses `POST /auth/login`.

@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import ProjectCard from "./ProjectCard";
 import ProjectDetails from "./ProjectDetails";
+import ProjectLoadingSkeleton from "./ProjectLoadingSkeleton";
 import useProjects from "./useProjects";
 
 const Project = () => {
@@ -25,9 +26,7 @@ const Project = () => {
                 </div>
 
                 {loading && (
-                    <p role="status" className="text-sm text-secondary-light dark:text-secondary-dark">
-                        Loading projects…
-                    </p>
+                    <ProjectLoadingSkeleton label="Loading featured projects" />
                 )}
                 {error && (
                     <div className="flex flex-wrap items-center gap-3 text-sm text-red-600 dark:text-red-400">

@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import API_BASE_URL from '../Base/baseUrl';
 
 const roles = [
     'Backend — FastAPI, Python',
@@ -53,7 +54,7 @@ const Hero = () => {
                         <a href="#projects" className="btn-primary">
                             View Projects
                         </a>
-                        <a href="/resume.pdf" download="Shakhawat-Hossain-Shuvo-Resume.pdf" className="btn-ghost">
+                        <a href={`${API_BASE_URL}/resume`} className="btn-ghost">
                             Download Resume
                         </a>
                         <a href="#contact" className="btn-ghost">

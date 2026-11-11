@@ -1,13 +1,13 @@
 # Shuvo Portfolio — Full-Stack Project
 
-This repository contains Shakhawat Hossain Shuvo's personal portfolio website. The frontend provides the portfolio, project archive, and admin panel. The backend provides a REST API for project data, authentication, and image uploads.
+This repository contains Shakhawat Hossain Shuvo's personal portfolio website. The frontend provides the portfolio, project archive, and admin panel. The backend provides a REST API for project data, authentication, and file uploads.
 
 ## Features
 
 - **Portfolio (`/`)** — Introduction, skills, featured projects, resume, and contact section.
 - **Project archive (`/projects`)** — Lists projects from the API and supports category filters.
-- **Admin panel (`/admin`)** — Admin users can create, edit, and delete projects and manage project images.
-- **REST API** — Manages projects, features, technologies, and images.
+- **Admin panel (`/admin`)** — Admin users can create, edit, and delete projects, manage project images, and upload the resume PDF.
+- **REST API** — Manages projects, features, technologies, images, and the downloadable resume.
 - **Authentication** — Bearer tokens protect admin-only write endpoints and expire after 24 hours.
 - **Dark and light themes** — The selected theme is saved in the browser.
 
@@ -116,6 +116,8 @@ The admin panel manages project titles, descriptions, categories, statuses, prio
 | `POST` | `/auth/register` | Create the first admin account |
 | `POST` | `/auth/login` | Sign in with a username and password |
 | `GET` | `/auth/me` | Get the current user's information |
+| `POST` | `/resume` | Upload or replace the resume PDF (admin) |
+| `GET` | `/resume` | Download the current resume PDF |
 | `GET` | `/projects/all` | List all projects |
 | `GET` | `/projects/{project_id}` | Get project details |
 | `POST` | `/projects` | Create a project (admin) |
@@ -126,7 +128,7 @@ The admin panel manages project titles, descriptions, categories, statuses, prio
 | `PUT` | `/projects/{project_id}/images/{image_id}` | Replace an image (admin) |
 | `DELETE` | `/projects/{project_id}/images/{image_id}` | Delete an image (admin) |
 
-Protected endpoints require a bearer token from the login response's `access_token`. Image uploads use a `file` field in `multipart/form-data`. JPG/JPEG, PNG, WEBP, and GIF images are supported up to 5 MB. See the [Backend API reference](Backend/APIsReadme.md) for request and response examples.
+Protected endpoints require a bearer token from the login response's `access_token`. Image and resume uploads use a `file` field in `multipart/form-data`; images are supported up to 5 MB and resume PDFs up to 10 MB. Link the portfolio's resume button to the backend's public `/resume` URL to make it downloadable. See the [Backend API reference](Backend/APIsReadme.md) for request and response examples.
 
 ## Configuration and production
 

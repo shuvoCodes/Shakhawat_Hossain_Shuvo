@@ -111,6 +111,10 @@ A project response has this shape:
   "description": "Courier management platform...",
   "category": "frontend",
   "status": "in_progress",
+  "start_date": "2025-01-15",
+  "end_date": null,
+  "last_updated": null,
+  "expected_start_date": null,
   "featured": true,
   "priority": 10,
   "features": [
@@ -132,11 +136,20 @@ A project response has this shape:
 }
 ```
 
-For compatibility with older clients, `github_url` is accepted as an alias for the frontend source URL and is also returned in responses. New clients should use `frontend_source_url`. Maximum lengths are 200 characters for `title`, 5,000 for `description`, 100 for `category`, 50 for `status`, and 2,048 for URL fields.
+For compatibility with older clients, `github_url` is accepted as an alias for the frontend source URL and is also returned in responses. New clients should use `frontend_source_url`. Status must be `completed`, `in_progress`, `on_hold`, or `planned`. Dates use `YYYY-MM-DD`. The status determines the required timeline fields:
+
+| Status | Required dates | Portfolio timeline |
+|---|---|---|
+| `completed` | `start_date`, `end_date` | Start date – end date |
+| `in_progress` | `start_date` | Start date – Present |
+| `on_hold` | `start_date`, `last_updated` | Start date – last updated |
+| `planned` | `expected_start_date` | Expected start date |
+
+End dates and last-updated dates cannot be earlier than the start date. Maximum lengths are 200 characters for `title`, 5,000 for `description`, 100 for `category`, and 2,048 for URL fields.
 
 ### `POST /projects`
 
-Create a project. An admin token is required. `title` and `description` are required; all other fields are optional.
+Create a project. An admin token is required. `title` and `description` are required; timeline dates are required according to the selected status, and the remaining fields are optional.
 
 **Request**
 
@@ -146,6 +159,7 @@ Create a project. An admin token is required. `title` and `description` are requ
   "description": "Courier management platform...",
   "category": "frontend",
   "status": "in_progress",
+  "start_date": "2025-01-15",
   "featured": true,
   "priority": 10,
   "features": [
@@ -170,7 +184,7 @@ Create a project. An admin token is required. `title` and `description` are requ
 }
 ```
 
-If omitted, `features`, `technologies`, and `images` default to empty lists. Defaults are `frontend` for `category`, `in_progress` for `status`, `false` for `featured`, and `0` for `priority`. On success, the endpoint returns the complete project with `201 Created`.
+If omitted, `features`, `technologies`, and `images` default to empty lists. Defaults are `frontend` for `category`, `in_progress` for `status`, `false` for `featured`, and `0` for `priority`. Include the date fields required by the selected status or the request returns `422`. On success, the endpoint returns the complete project with `201 Created`.
 
 ### `GET /projects/all`
 
@@ -187,6 +201,7 @@ Update selected project fields. An admin token is required. Include only fields 
 ```json
 {
   "status": "completed",
+  "end_date": "2025-04-20",
   "featured": true,
   "priority": 20,
   "technologies": ["React", "FastAPI"],
@@ -199,11 +214,13 @@ Update selected project fields. An admin token is required. Include only fields 
 }
 ```
 
+When changing a project's status, include any required timeline dates not already stored for the new status. For example, completing an in-progress project requires `end_date`; the existing `start_date` is retained. Changing to `planned` requires `expected_start_date`. Changing the status or any timeline date clears date fields that do not apply to that status.
+
 - Increasing `priority` moves a project higher in the project list.
 - Sending `features` replaces the existing feature list.
 - Sending `technologies` replaces the existing technology list.
 - Sending `images` replaces the existing image list. Old local `/uploads/` files that are not included in the new list are deleted. Keep a file by including its `image_url` in the replacement list. Sending `"images": []` removes all images.
-- Sending `null` for `live_url`, `frontend_source_url`, or `backend_source_url` clears that URL. `github_url` can also be used to update or clear the frontend source URL. Other fields cannot be `null`.
+- Sending `null` for `live_url`, `frontend_source_url`, `backend_source_url`, or a timeline date clears that value. `github_url` can also be used to update or clear the frontend source URL. Other fields cannot be `null`.
 
 On success, the endpoint returns the complete updated project. Returns `404` if the project does not exist.
 
