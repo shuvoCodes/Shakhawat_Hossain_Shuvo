@@ -1,33 +1,25 @@
 
-import os
-
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 
-# Get DATABASE_URL from environment variables
-DATABASE_URL = os.getenv("DATABASE_URL")
-
-if not DATABASE_URL:
-    raise RuntimeError(
-        "DATABASE_URL is not configured. "
-        "Please set DATABASE_URL in the environment."
-    )
+# Database URL
+DATABASE_URL = "postgresql://neondb_owner:npg_GHZ2hPF7jWdT@ep-summer-grass-beskfkta-pooler.c-9.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
 
 
-# Convert PostgreSQL URL to psycopg driver format
+# Convert PostgreSQL URL to psycopg format
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace(
         "postgres://",
         "postgresql+psycopg://",
-        1,
+        1
     )
 
 elif DATABASE_URL.startswith("postgresql://"):
     DATABASE_URL = DATABASE_URL.replace(
         "postgresql://",
         "postgresql+psycopg://",
-        1,
+        1
     )
 
 
@@ -43,7 +35,7 @@ if DATABASE_URL.startswith("sqlite:"):
 # Create database engine
 engine = create_engine(
     DATABASE_URL,
-    **engine_options,
+    **engine_options
 )
 
 
@@ -51,7 +43,7 @@ engine = create_engine(
 SessionLocal = sessionmaker(
     autocommit=False,
     autoflush=False,
-    bind=engine,
+    bind=engine
 )
 
 
