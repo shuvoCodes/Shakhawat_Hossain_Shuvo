@@ -91,7 +91,9 @@ If `AUTH_SECRET` is not configured, the backend creates a temporary signing key.
 
 ### 2. Create the first admin
 
-After starting the API and frontend, open `/admin` and create the first admin account with a username and password of at least 6 characters. This setup is available only while the database is empty; afterward, sign in with that account. Email verification and password recovery are not available.
+On a new, empty database, create the first admin account with `POST /auth/register`, using a username and a password of at least 6 characters. The endpoint returns a login token. Only one account can be created per database; after it exists, use `/auth/login`. Additional registration attempts are rejected, and password recovery is not available through the API.
+
+For local database administration, `python create_user.py <username> <password> admin` can create the initial account on an empty database only.
 
 > If PowerShell blocks virtual environment activation, run commands with `.venv\Scripts\python.exe` instead.
 
@@ -116,7 +118,7 @@ Open the local URL printed by Vite, usually <http://localhost:5173>. During deve
 
 ## Project management and API
 
-The admin panel manages project titles, descriptions, categories, statuses, priority, featured status, live/source URLs, technologies, and feature lists. Project images can be uploaded, replaced, and deleted separately.
+The admin panel manages project titles, descriptions, categories, priority, featured status, live/source URLs, technologies, feature lists, and project status timelines. Completed projects use start and end dates; in-progress projects show a start date through Present; on-hold projects show a start date and last-updated date; planned projects show an expected start date. Timelines appear on project cards and in project details. Project images can be uploaded, replaced, and deleted separately.
 
 | Method | Endpoint | Purpose |
 |---|---|---|
@@ -156,7 +158,7 @@ For a future Render deployment, use `Backend` as the service root, `pip install 
 - The backend creates its database tables at startup and migrates missing project columns in existing databases.
 - Existing data in `Backend/personal.db` is not copied to Supabase automatically; migrate it separately if you need to preserve it.
 - Uploaded images are stored in `Backend/Uploads/`. Keep both the database and upload directory on persistent storage; ephemeral hosts may remove them during redeployment.
-- `/projects/all` returns an empty array when there are no projects.
+- `/projects/all` returns `404` when there are no projects.
 - Hiding the admin page is not access control; write endpoints are protected by backend authorization.
 - Never commit `AUTH_SECRET`, passwords, or other credentials.
 

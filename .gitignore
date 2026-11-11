@@ -8,6 +8,7 @@ __pycache__/
 *.py[cod]
 *.db
 *.db-*
+/firebase-service-account.json
 
 Backend/.venv/
 Backend/venv/
