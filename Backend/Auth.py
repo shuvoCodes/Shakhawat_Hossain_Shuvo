@@ -22,7 +22,7 @@ load_dotenv(Path(__file__).with_name(".env"), override=False)
 
 router = APIRouter(prefix="/auth", tags=["authentication"])
 
-AUTH_SECRET = os.getenv("AUTH_SECRET")
+AUTH_SECRET = os.getenv("AUTH_SECRET", "254bf4ae68ca585c56078015756edc5a49ad535acac4205d02e1c24e6feb3383")
 if not AUTH_SECRET or AUTH_SECRET == "development-only-change-this-secret":
     AUTH_SECRET = secrets.token_urlsafe(32)
     logging.getLogger(__name__).warning(

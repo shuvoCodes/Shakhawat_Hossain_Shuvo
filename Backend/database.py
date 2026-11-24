@@ -5,7 +5,7 @@ from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 # Database URL
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./personal.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://neondb_owner:npg_r5RI4PUKbNji@ep-summer-grass-beskfkta-pooler.c-9.us-east-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require")
 
 
 
