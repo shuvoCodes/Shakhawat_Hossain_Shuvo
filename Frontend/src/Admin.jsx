@@ -23,6 +23,7 @@ import { BrandMark, BrandText } from "./Components/BrandIdentity";
 import API_BASE_URL from "./Base/baseUrl";
 
 const API_BASE = API_BASE_URL;
+console.log(API_BASE);
 const TOKEN_KEY = "shuvo-admin-token";
 const TOKEN_EXPIRY_KEY = "shuvo-admin-token-expires-at";
 const SESSION_EXPIRED_EVENT = "shuvo-admin-session-expired";

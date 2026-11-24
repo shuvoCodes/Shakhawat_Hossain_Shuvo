@@ -132,15 +132,8 @@ def _validated_timeline(status: str, dates: dict[str, date | None]) -> dict[str,
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://shakhawathossainshuvo.vercel.app",
-        *[
-            origin.strip()
-            for origin in os.getenv("CORS_ORIGINS", "").split(",")
-            if origin.strip()
-        ],
-    ],
-    allow_credentials=True,
+    allow_origins=["*"],
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
